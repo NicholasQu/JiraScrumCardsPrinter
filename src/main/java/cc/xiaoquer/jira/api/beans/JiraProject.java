@@ -49,6 +49,8 @@ public class JiraProject extends AbstractJiraEntity {
 
         JSONArray projectsArray = jsonObject.getJSONArray("values");
 
+        if (projectsArray == null) {return projectsMap;}
+
         for (int i=0; i< projectsArray.size(); i++) {
             JSONObject projectJo = projectsArray.getJSONObject(i);
 
