@@ -1,6 +1,7 @@
 package cc.xiaoquer.jira.api.beans;
 
 import cc.xiaoquer.jira.api.JIRA;
+import cc.xiaoquer.jira.utils.JSONParsingUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -55,7 +56,7 @@ public class JiraIssue extends AbstractJiraEntity {
     private String allJson; //缓存所有的json数据
 
     //这个字段需要大家自己去修改映射关系，用于扩展
-    private Map<String, String> customFields = new HashMap<String, String>();
+    private Map<String, String> customFields = new LinkedHashMap<String, String>();
 
     private boolean hasSubtask = false;
     private Map<String, JiraIssue> subTaskMap;
@@ -879,6 +880,23 @@ public class JiraIssue extends AbstractJiraEntity {
         } catch (Exception e) {
             jiraIssue.setDueDate("");
         }
+
+
+        //2018-3-22 Nicholas
+        //递归解析JSON映射关系Map, 调用JIRA.AGILE_ISSUE_URL返回的JSON。
+        //根节点是基于fields，对应的动态添加的Key写法应该是 fields>assignee>name
+        //示例：
+//        fields>assignee>displayName ============= 樊得宝
+//        fields>assignee>name ============= debao.fan
+//        fields>assignee>self ============= http://99.48.46.160:8080/rest/api/2/user?username=debao.fan
+//        fields>assignee>active ============= true
+//        fields>assignee>timeZone ============= Asia/Shanghai
+//        fields>assignee>key ============= debao.fan
+//        fields>worklog>total ============= 0
+//        fields>worklog>maxResults ============= 20
+//        fields>worklog>startAt ============= 0
+//        fields>updated ============= 2018-03-16T17:34:54.000+0800
+        jiraIssue.getCustomFields().putAll(JSONParsingUtil.getAllMapping(inputJo.toString()));
 
         //Team customfield_10601
         try {

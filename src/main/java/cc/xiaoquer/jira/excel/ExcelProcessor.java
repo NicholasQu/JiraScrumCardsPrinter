@@ -33,7 +33,7 @@ public class ExcelProcessor {
      * 创建时间,更新时间,截止时间
      * Browse
      */
-    public static final short[] COL_WIDTH_PIXEL = new short[] {
+    public static short[] COL_WIDTH_PIXEL = new short[] {
             0,      0,      150,    50,     50,     100,
             300,    80,     120,    120,    120,    0,    0,
             0,      0,      120,      0,
@@ -41,14 +41,30 @@ public class ExcelProcessor {
             100
     };
 
+    public static final int COL_INIT_NUM = COL_WIDTH_PIXEL.length;
+
+    public static int COL_ADD_NUM  = 0;
+    public static String[] CUSTOM_KEY_ARR;
+    public static String[] CUSTOM_NAME_ARR;
+    public static boolean CUSTOM_FIELDS_ADDED = false;   //是否已经添加了自定义的列
+
     //显示所有列 对应环境变量 excelShowAllColumns
-    public static final short[] COL_WIDTH_PIXEL_ALL = new short[] {
+    public static short[] COL_WIDTH_PIXEL_ALL = new short[] {
             0,      0,      150,    50,     50,    100,
             300,    80,     120,    120,    120,    100,    100,
             100,    100,    100,    100,
             200,    100,    100,
             100
     };
+
+    public static String[] COL_NAME_ARR = new String[] {
+            "Id",        "hiddenKeys",   "团队",  "T",   "类型",  "Key",
+            "主题",       "状态",       "经办人",   "预估时间(H)",   "剩余时间(H)",  "预估时间",  "剩余时间",
+            "项目Key",    "项目名称",    "优先级",    "描述",
+            "创建时间",    "更新时间",    "截止时间",
+            "Browse"
+    };
+
 
     private static final DecimalFormat DF = new DecimalFormat("#.#");
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -60,13 +76,13 @@ public class ExcelProcessor {
     public static int ROW_IDX_DATA          = 0;    //数据起始行号
 
     public static int COL_IDX_ID            = 0;    //
-    public static int COL_IDX_KEY           = 0;    //
-    public static int COL_IDX_TEAM          = 0;    //
-    public static int COL_IDX_TYPE          = 0;    //issue类型列号
-    public static int COL_IDX_STATUS        = 0;    //状态列号
-    public static int COL_IDX_OWNER         = 0;    //经办人列号
-    public static int COL_IDX_EST_HOUR      = 0;    //估算时间(小时)列号
-    public static int COL_IDX_LEFT_HOUR     = 0;    //剩余时间(小时)列号
+    public static int COL_IDX_TEAM          = 2;    //
+    public static int COL_IDX_TYPE          = 4;    //issue类型列号
+    public static int COL_IDX_KEY           = 5;    //
+    public static int COL_IDX_STATUS        = 7;    //状态列号
+    public static int COL_IDX_OWNER         = 8;    //经办人列号
+    public static int COL_IDX_EST_HOUR      = 9;    //估算时间(小时)列号
+    public static int COL_IDX_LEFT_HOUR     = 10;    //剩余时间(小时)列号
 
     public static final List<Integer> TEAM_GROUP_START_ROW = new ArrayList<>();
     public static final List<Integer> STORY_GROUP_START_ROW = new ArrayList<>();
@@ -111,29 +127,42 @@ public class ExcelProcessor {
 
         //4 在sheet表中添加表头，老版本的poi对sheet的行列有限制
         HSSFRow headerRow = sheet.createRow(rowIdx++);  ROW_IDX_HEADER = rowIdx - 1;
+
+        //2018-3-22： 新增自定义的字段，通过json的格式自动拼装到excel里。
+        if (!CUSTOM_FIELDS_ADDED) {
+            Object keys = PropertiesCache.getProp("excel.customfield.keys");
+
+            if ( keys != null && StringUtils.isNotBlank(keys.toString())) {
+                String customKeys = keys.toString();
+                String customNames = PropertiesCache.getProp("excel.customfield.names").toString();
+
+                CUSTOM_KEY_ARR = StringUtils.split(customKeys, ",");
+                CUSTOM_NAME_ARR = StringUtils.split(customNames, ",");
+
+                if (CUSTOM_KEY_ARR.length != CUSTOM_NAME_ARR.length) {
+                    System.out.println("配置都能不一致，你还能干点啥！");
+                } else {
+                    COL_ADD_NUM = CUSTOM_KEY_ARR.length;
+                }
+
+                COL_WIDTH_PIXEL     = Arrays.copyOf(COL_WIDTH_PIXEL,      COL_INIT_NUM + COL_ADD_NUM);
+                COL_WIDTH_PIXEL_ALL = Arrays.copyOf(COL_WIDTH_PIXEL_ALL,  COL_INIT_NUM + COL_ADD_NUM);
+                COL_NAME_ARR        = Arrays.copyOf(COL_NAME_ARR,         COL_INIT_NUM + COL_ADD_NUM);
+
+                for (int i = 0; i < COL_ADD_NUM; i++) {
+                    COL_WIDTH_PIXEL[COL_INIT_NUM + i] = 100;
+                    COL_WIDTH_PIXEL_ALL[COL_INIT_NUM + i] = 100;
+                    COL_NAME_ARR[COL_INIT_NUM + i] =  CUSTOM_NAME_ARR[i];
+                }
+            }
+
+            CUSTOM_FIELDS_ADDED = true;
+        }
+
         //创建单元格，设置表头
-        int columnIdx = 0;
-        headerRow.createCell(columnIdx++).setCellValue("Id");  COL_IDX_ID = columnIdx - 1;
-        headerRow.createCell(columnIdx++).setCellValue("hiddenKeys");
-        headerRow.createCell(columnIdx++).setCellValue("团队"); COL_IDX_TEAM = columnIdx - 1;
-        headerRow.createCell(columnIdx++).setCellValue("T");
-        headerRow.createCell(columnIdx++).setCellValue("类型"); COL_IDX_TYPE = columnIdx - 1;
-        headerRow.createCell(columnIdx++).setCellValue("Key"); COL_IDX_KEY = columnIdx - 1;
-        headerRow.createCell(columnIdx++).setCellValue("主题");
-        headerRow.createCell(columnIdx++).setCellValue("状态"); COL_IDX_STATUS = columnIdx - 1; //获取状态列的列号
-        headerRow.createCell(columnIdx++).setCellValue("经办人"); COL_IDX_OWNER = columnIdx - 1;
-        headerRow.createCell(columnIdx++).setCellValue("预估时间(H)");COL_IDX_EST_HOUR= columnIdx - 1;
-        headerRow.createCell(columnIdx++).setCellValue("剩余时间(H)");COL_IDX_LEFT_HOUR = columnIdx - 1;
-        headerRow.createCell(columnIdx++).setCellValue("预估时间");
-        headerRow.createCell(columnIdx++).setCellValue("剩余时间");
-        headerRow.createCell(columnIdx++).setCellValue("项目Key");
-        headerRow.createCell(columnIdx++).setCellValue("项目名称");
-        headerRow.createCell(columnIdx++).setCellValue("优先级");
-        headerRow.createCell(columnIdx++).setCellValue("描述");
-        headerRow.createCell(columnIdx++).setCellValue("创建时间");
-        headerRow.createCell(columnIdx++).setCellValue("更新时间");
-        headerRow.createCell(columnIdx++).setCellValue("截止时间");
-        headerRow.createCell(columnIdx++).setCellValue("Browse");
+        for (int columnIdx = 0; columnIdx < COL_WIDTH_PIXEL.length; columnIdx++) {
+            headerRow.createCell(columnIdx).setCellValue(COL_NAME_ARR[columnIdx]);
+        }
 
         //5 汇总行
         HSSFRow sumRow = sheet.createRow(rowIdx++); ROW_IDX_SUM = rowIdx - 1;
@@ -173,7 +202,7 @@ public class ExcelProcessor {
             }
         }
 
-        renderExcel(workbook, sheet, rowIdx - 1, columnIdx - 1);
+        renderExcel(workbook, sheet, rowIdx - 1, COL_WIDTH_PIXEL.length - 1);
 
         //写入汇总数据
         sumRow.getCell(COL_IDX_OWNER).setCellValue("总人力: " + PEOPLE.size());
@@ -278,6 +307,10 @@ public class ExcelProcessor {
         link.setAddress(JIRA.serverUrl + JIRA.BROWSE_ISSUE_URL.replace("{issueKey}", issue.getIssueKey()));
         linkCell.setCellValue("Issue Detail");
         linkCell.setHyperlink(link);
+
+        for (int i = 0; i < COL_ADD_NUM; i++) {
+            row.createCell(columnIdx++).setCellValue(issue.getCustomFields().get(CUSTOM_KEY_ARR[i]));
+        }
     }
 
     //渲染excel

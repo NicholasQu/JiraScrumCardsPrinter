@@ -12,8 +12,8 @@ public class PropertiesCache {
     public static final String CONFIG_FILE_NAME = CONFIG_PATH + File.separator +"conf" + File.separator + "jscp.properties";
     private static final String KEY = System.getProperty("java.version");
 
-    private static final Properties configProp = new Properties();
-    private static Properties baselineProp = new Properties();
+    private static final Properties configProp = new OrderedProperties();
+    private static Properties baselineProp = new OrderedProperties();
 
     private PropertiesCache() {
     }
@@ -160,6 +160,10 @@ public class PropertiesCache {
             result[i] = (byte)(contentBytes[i] ^ dkey ^ salt);
         }
         return new String(result, "utf-8");
+    }
+
+    public static Object getProp(String key) {
+        return configProp.get(key);
     }
 
 }
