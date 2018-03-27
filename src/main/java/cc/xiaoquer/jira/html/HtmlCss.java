@@ -18,13 +18,14 @@ public class HtmlCss {
 //            " tbody { display: block; page-break-after: always; page-break-before: avoid; page-break-inside:avoid; } \n" +
             " \n";
 
-    public static final String CARD = "\n" +
+    private static final String CARD = "\n" +
             "#cardview  \n" +
             "{  " +
             "    font-family: Lucida Sans Unicode, Lucida Grande, Sans-Serif;  " +
             "    font-size: 18px;  " +
 //            "    margin: 10px;  " +
             "    width: 500px;  " +
+            "    color: @COLOR_ON_BACKGROUND@;  " +
 //            "    text-align: left;  " +
             "    border-collapse: collapse;  " +
             "    border-color: black;" +
@@ -64,6 +65,15 @@ public class HtmlCss {
 //            "    background: #fff;" +
 //            "} " +
             "\n";
+
+    //浅色卡片，黑色字体
+    public static final String CARD_LIGHT = CARD
+            .replaceAll("#cardview", "#cardview_light")
+            .replaceAll("@COLOR_ON_BACKGROUND@", "black");
+    //深色卡片，白色字体
+    public static final String CARD_DARK = CARD
+            .replaceAll("#cardview", "#cardview_dark")
+            .replaceAll("@COLOR_ON_BACKGROUND@", "white");
 
     /**
      * https://github.com/cognitom/paper-css/blob/master/examples/a4.html

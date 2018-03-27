@@ -19,7 +19,8 @@ import static j2html.TagCreator.*;
 public class HtmlGenerator {
 //    public static final String HTML_FILE = PropertiesCache.CONFIG_PATH + "/JiraScrumCards-{boardAndSprintName}-{date}.html";
     public static final String HTML_FILE = PropertiesCache.CONFIG_PATH + "/JiraScrumCards-{boardName}-{sprintName}.html";
-    public static final String CSS_CARD_ID = "cardview";
+    public static final String CSS_CARD_ID_LIGHT = "cardview_light";
+    public static final String CSS_CARD_ID_DARK = "cardview_dark";
 
     public static final String TAG_LEFT = "<";
     public static final String TAG_LEFT_ESCAPE = "&lt;";
@@ -102,7 +103,8 @@ public class HtmlGenerator {
             head(
                 title("Jira看板打印 - v1.0"),
                 meta().attr("http-equiv", "Content-Type").attr("content", "text/html;charset=utf-8"),
-                style().withText(HtmlCss.COMMON).withText(HtmlCss.PAPER).withText(HtmlCss.CARD)
+                style().withText(HtmlCss.COMMON).withText(HtmlCss.PAPER)
+                        .withText(HtmlCss.CARD_LIGHT).withText(HtmlCss.CARD_DARK)
 //                link().withRel("stylesheet").withHref("/css/main.css")
             ),
             body(pageTable).withClass("A4")
@@ -127,7 +129,9 @@ public class HtmlGenerator {
 //        JiraBoard jiraBoard = JIRA.getBoardCache(jiraIssue.getBoardId());
 //        String boardName = (jiraBoard == null ? "" : jiraBoard.getBoardName());
 
-        ContainerTag cardTable = table().withId(CSS_CARD_ID).attr("bgcolor", card_bgcolor).with(
+        String cardId = JiraColor.isColorDark(card_bgcolor) ? CSS_CARD_ID_DARK : CSS_CARD_ID_LIGHT;
+
+        ContainerTag cardTable = table().withId(cardId).attr("bgcolor", card_bgcolor).with(
                 thead(
                         tr(
                                 th().attr("scope","col").attr("width", "70%"),

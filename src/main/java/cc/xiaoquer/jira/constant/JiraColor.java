@@ -1,6 +1,8 @@
 package cc.xiaoquer.jira.constant;
 
+import java.awt.*;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -79,6 +81,39 @@ public enum JiraColor {
         return pickedColor.hex;
     }
 
+    public static boolean isColorDark(String hexColor){
+        String r = hexColor.substring(1, 3);
+        String g = hexColor.substring(3, 5);
+        String b = hexColor.substring(5, 7);
+
+        int red = Integer.parseInt(r, 16);
+        int green = Integer.parseInt(g, 16);
+        int blue = Integer.parseInt(b, 16);
+
+        String rawFontColor = hexColor.substring(1, hexColor.length());
+        int rgb = Integer.parseInt(rawFontColor, 16);
+        Color c = new Color(rgb);
+        float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
+        float brightness = hsb[2];
+
+        //Not accurate
+//        if (brightness < 0.5) {
+//            return false;
+//        } else {
+//            return true;
+//        }
+
+        //good one
+//        return red + green + blue <= 0xff * 3 / 2;
+
+        return 0.2126*red + 0.7152*green + 0.0722*blue < 128;
+    }
+
+    public static void main(String[] args) {
+        for (Colors c : Colors.values()) {
+            System.out.println(c.desc + " is " + (JiraColor.isColorDark(c.hex) ? "Dark" : "Light"));
+        }
+    }
     /**
      * 重复颜色，Dark深色，移除
      */
@@ -118,7 +153,7 @@ public enum JiraColor {
         COLOR_ROYALBLUE ("#4169E1","皇军蓝"),
         COLOR_CORNFLOWERBLUE ("#6495ED","矢车菊的蓝色"),
         COLOR_LIGHTSTEELBLUE ("#B0C4DE","淡钢蓝"),
-        COLOR_LIGHTSLATEGRAY ("#778899","浅石板灰"),
+//        COLOR_LIGHTSLATEGRAY ("#778899","浅石板灰"),
         COLOR_SLATEGRAY ("#708090","石板灰"),
         COLOR_DODERBLUE ("#1E90FF","道奇蓝"),
         COLOR_ALICEBLUE ("#F0F8FF","爱丽丝蓝"),
@@ -216,8 +251,8 @@ public enum JiraColor {
 //        COLOR_LIGHTGREY ("#D3D3D3","浅灰色"),
         COLOR_SILVER ("#C0C0C0","银白色"),
 //        COLOR_DARKGRAY ("#A9A9A9","深灰色"),
-        COLOR_GRAY ("#808080","灰色"),
-        COLOR_DIMGRAY ("#696969","暗淡的灰色"),
+//        COLOR_GRAY ("#808080","灰色"),
+//        COLOR_DIMGRAY ("#696969","暗淡的灰色"),
 //        COLOR_BLACK ("#000000","纯黑"),
         ;
 
