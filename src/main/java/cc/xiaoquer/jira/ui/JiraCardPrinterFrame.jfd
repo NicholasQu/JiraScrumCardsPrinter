@@ -13,7 +13,7 @@ new FormModel {
 			"foreground": sfield java.awt.SystemColor textHighlight
 			"background": new java.awt.Color( 204, 204, 255, 255 )
 			"$locationPolicy": 1
-			"title": "Jira看板打印 - v0.1"
+			"title": "Jira看板打印 - v1.1 By Nicholas"
 			"defaultCloseOperation": 3
 			"font": new java.awt.Font( "Lucida Grande", 1, 13 )
 			"resizable": false
@@ -109,7 +109,7 @@ new FormModel {
 					} )
 				}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) )
 				add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.GridBagLayout ) {
-					"$columnSpecs": "85, 71, 73, 152, 102, 101, 92, 52, 63"
+					"$columnSpecs": "85, 71, 73, 152, 102, 101, 92, 65, 42"
 					"$rowSpecs": "baseline:30"
 					"$hGap": 5
 					"$vGap": 5
@@ -185,6 +185,18 @@ new FormModel {
 					}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
 						"vAlign": 0
 						"gridx": 6
+					} )
+					add( new FormComponent( "javax.swing.JLabel" ) {
+						name: "lblUpdate"
+						"text": "=检查更新="
+						"horizontalAlignment": 0
+						"font": #Font0
+						"border": new javax.swing.border.LineBorder( sfield java.awt.Color black, 1, false )
+						"preferredSize": new java.awt.Dimension( 74, 25 )
+						addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "lblUpdateMouseClicked", true ) )
+					}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
+						"vAlign": 0
+						"gridx": 8
 					} )
 				}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
 					"gridy": 2
@@ -443,4 +455,3 @@ new FormModel {
 		} )
 	}
 }
-

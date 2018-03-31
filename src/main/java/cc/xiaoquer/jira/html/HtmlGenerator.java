@@ -1,6 +1,7 @@
 package cc.xiaoquer.jira.html;
 
 import cc.xiaoquer.jira.api.beans.JiraIssue;
+import cc.xiaoquer.jira.constant.FoldersConsts;
 import cc.xiaoquer.jira.constant.JiraColor;
 import cc.xiaoquer.jira.storage.PropertiesCache;
 import j2html.tags.ContainerTag;
@@ -17,8 +18,8 @@ import static j2html.TagCreator.*;
  * Created by Nicholas on 2017/9/6.
  */
 public class HtmlGenerator {
-//    public static final String HTML_FILE = PropertiesCache.CONFIG_PATH + "/JiraScrumCards-{boardAndSprintName}-{date}.html";
-    public static final String HTML_FILE = PropertiesCache.CONFIG_PATH + "/JiraScrumCards-{boardName}-{sprintName}.html";
+//    public static final String HTML_FILE = PropertiesCache.OUTPUT_FOLDER + "/JiraScrumCards-{boardAndSprintName}-{date}.html";
+    public static final String HTML_FILE = FoldersConsts.OUTPUT_FOLDER + "/JiraScrumCards-{boardName}-{sprintName}.html";
     public static final String CSS_CARD_ID_LIGHT = "cardview_light";
     public static final String CSS_CARD_ID_DARK = "cardview_dark";
 

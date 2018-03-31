@@ -1,5 +1,7 @@
 package cc.xiaoquer.jira.constant;
 
+import cc.xiaoquer.jira.storage.PropertiesCache;
+
 import java.awt.*;
 import java.util.*;
 import java.util.List;
@@ -42,11 +44,10 @@ public enum JiraColor {
      * @return
      */
     public static String getColorByName(String name) {
-        String needColorfulIssue1 = System.getenv("colorful");
-        String needColorfulIssue2 = System.getProperty("colorful");
+        String needColorfulIssue = PropertiesCache.getProp("colorful");
 
-        //显性的注明colorful=1启动参数才会打印五颜六色的, 否则确认统一一种颜色
-        if (!"1".equalsIgnoreCase(needColorfulIssue1) && !"1".equalsIgnoreCase(needColorfulIssue2)) {
+        //只有colorful显性设置了不等于1，才不会打印五颜六色的, 否则确认统一一种颜色
+        if (needColorfulIssue != null && !"1".equalsIgnoreCase(needColorfulIssue)) {
             return SUBTASK.hex;
         }
 

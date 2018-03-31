@@ -2,6 +2,7 @@ package cc.xiaoquer.jira.excel;
 
 import cc.xiaoquer.jira.api.JIRA;
 import cc.xiaoquer.jira.api.beans.JiraIssue;
+import cc.xiaoquer.jira.constant.FoldersConsts;
 import cc.xiaoquer.jira.storage.PropertiesCache;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.common.usermodel.HyperlinkType;
@@ -23,7 +24,7 @@ import java.util.*;
  */
 public class ExcelProcessor {
 
-    public static final String EXCEL_FILE = PropertiesCache.CONFIG_PATH + "/Export-{boardName}-{sprintName}-{date}.xls";
+    public static final String EXCEL_FILE = FoldersConsts.OUTPUT_FOLDER + "/Export-{boardName}-{sprintName}-{date}.xls";
     public static final int    PADDING_LEN    = 10;
 
     /**
@@ -325,13 +326,12 @@ public class ExcelProcessor {
         //隐藏hiddenKeys列, 其他列自动调整
 //        sheet.setColumnHidden(0, true);
 
-        String excelColumns1 = System.getenv("excelShowAllColumns");
-        String excelColumns2 = System.getProperty("excelShowAllColumns");
+        String excelColumns = PropertiesCache.getProp("excelShowAllColumns");
 
         for (int i = 0; i <= colCount; i++){
             if (i < COL_WIDTH_PIXEL.length) {
                 int wu = 0;
-                if ("1".equals(excelColumns1) || "1".equals(excelColumns2)) {
+                if ("1".equals(excelColumns)) {
                     wu = ExcelUtils.pixel2WidthUnits(COL_WIDTH_PIXEL_ALL[i]);
                 } else {
                     wu = ExcelUtils.pixel2WidthUnits(COL_WIDTH_PIXEL[i]);

@@ -1,15 +1,17 @@
 package cc.xiaoquer.jira.storage;
 
+import cc.xiaoquer.jira.constant.FoldersConsts;
+
 import java.io.*;
 import java.util.Properties;
-import java.util.Set;
 
 /**
  * Created by Nicholas on 2017/9/5.
  */
 public class PropertiesCache {
-    public static final String CONFIG_PATH = System.getProperty("user.dir") + File.separator + "JSCP_FILES" ;
-    public static final String CONFIG_FILE_NAME = CONFIG_PATH + File.separator +"conf" + File.separator + "jscp.properties";
+//    public static final String OUTPUT_FOLDER = System.getProperty("user.dir") + File.separator + "JSCP_FILES" ;
+//    public static final String CONFIG_FILE = System.getProperty("user.dir") + File.separator +"CONF" + File.separator + "jscp.properties";
+
     private static final String KEY = System.getProperty("java.version");
 
     private static final Properties configProp = new OrderedProperties();
@@ -20,11 +22,16 @@ public class PropertiesCache {
 
     static {
         configProp.put("JSCP_OWNER","nicholas.qu");
+        //New Features
+        configProp.put("colorful=1", "1");
+        configProp.put("excelShowAllColumns", "0");
+        configProp.put("excel.customfield.keys", "fields>customfield_11001");
+        configProp.put("excel.customfield.names", "实际耗费时间");
         read();
     }
 
     private static Properties read() {
-        File configFile = new File(CONFIG_FILE_NAME);
+        File configFile = new File(FoldersConsts.CONFIG_FILE);
 
         if (!configFile.exists()) {
             try {
@@ -58,7 +65,7 @@ public class PropertiesCache {
         }
 
         System.out.println("FLUSH CACHE.");
-        File configFile = new File(CONFIG_FILE_NAME);
+        File configFile = new File(FoldersConsts.CONFIG_FILE);
 
         if (!configFile.exists()) {
             System.out.println("生成缓存文件..." + configFile.getAbsolutePath());
@@ -162,8 +169,19 @@ public class PropertiesCache {
         return new String(result, "utf-8");
     }
 
-    public static Object getProp(String key) {
-        return configProp.get(key);
+    public static String getProp(String key) {
+        String value = System.getenv(key);
+        if (value == null) {
+            value = System.getProperty(key);
+        }
+        if (value == null) {
+            value = (String) configProp.get(key);
+        }
+        return value;
+    }
+
+    public static void setProp(String key, String value) {
+        configProp.put(key, value);
     }
 
 }

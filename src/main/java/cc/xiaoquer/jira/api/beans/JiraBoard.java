@@ -6,8 +6,7 @@ import cc.xiaoquer.jira.api.jsonchain.JiraJSONObject;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.*;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -23,7 +22,10 @@ public class JiraBoard extends AbstractJiraEntity {
     private String boardName;
 
     //理论上一个看板只有一个project, jira api是允许多个，不知道什么考虑
+    @Getter(AccessLevel.NONE)
+    @Setter(AccessLevel.NONE)
     private Map<String, JiraProject> projects = new LinkedHashMap<>();
+    private boolean searched = false; //标识是否已查询过project
 
 //    {
 //        "maxResults":50,
@@ -58,8 +60,6 @@ public class JiraBoard extends AbstractJiraEntity {
             jiraBoard.setBoardId(String.valueOf(tmpJo.get("id")));
             jiraBoard.setBoardName(tmpJo.getString("name"));
 
-            jiraBoard.getProjects().putAll(JIRA.getProjectMap(jiraBoard.getBoardId()));
-
             boardsMap.put(jiraBoard.getBoardId(), jiraBoard);
         }
 
@@ -68,4 +68,12 @@ public class JiraBoard extends AbstractJiraEntity {
         return boardsMap;
     }
 
+    public Map<String, JiraProject> getProjects() {
+        //2018-3-28: board查询project在需要使用的时候再查
+        if (!searched) {
+            projects.putAll(JIRA.getProjectMap(boardId));
+            searched = true;
+        }
+        return projects;
+    }
 }

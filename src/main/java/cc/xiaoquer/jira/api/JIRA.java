@@ -34,6 +34,9 @@ import java.util.concurrent.TimeoutException;
  */
 public class JIRA {
     //https://docs.atlassian.com/jira-software/REST/cloud/
+    //https://docs.atlassian.com/jira-software/REST/
+    //JQL : https://confluence.atlassian.com/jirasoftwarecloud/advanced-searching-764478330.html
+    //JQL Fields : https://confluence.atlassian.com/jirasoftwarecloud/advanced-searching-fields-reference-764478339.html
     //该api默认最大返回50条记录，所以maxResult不能大于50，且只能分页查询。
     public static final String AGILE_BOARDS_URL  = "/rest/agile/1.0/board?type=scrum&startAt={start}&maxResults=50";
     public static final String AGILE_BOARD_PROJECT_URL = "/rest/agile/1.0/board/{boardId}/project?startAt=0&maxResults=50";
@@ -87,7 +90,7 @@ public class JIRA {
 //    private static Map<String, JiraSprint> sprintMap;
 //    private static Vector<String> sprintNames;
 
-    private static AsyncHttpClient asyncHttpClient = new DefaultAsyncHttpClient();
+    private static AsyncHttpClient asyncHttpClient;
 
     private JIRA() {
     }

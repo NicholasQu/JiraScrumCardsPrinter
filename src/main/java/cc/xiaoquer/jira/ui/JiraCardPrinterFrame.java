@@ -8,13 +8,13 @@ import cc.xiaoquer.jira.api.JIRA;
 import cc.xiaoquer.jira.api.beans.JiraBoard;
 import cc.xiaoquer.jira.api.beans.JiraIssue;
 import cc.xiaoquer.jira.api.beans.JiraSprint;
+import cc.xiaoquer.jira.autoupdater.JiraAutoUpdater;
 import cc.xiaoquer.jira.checkboxtree.CheckBoxNodeData;
 import cc.xiaoquer.jira.checkboxtree.CheckBoxNodeEditor;
 import cc.xiaoquer.jira.checkboxtree.CheckBoxNodeRenderer;
 import cc.xiaoquer.jira.excel.ExcelProcessor;
 import cc.xiaoquer.jira.html.HtmlGenerator;
 import cc.xiaoquer.jira.storage.PropertiesCache;
-import org.apache.commons.lang3.StringUtils;
 
 import javax.swing.*;
 import javax.swing.border.LineBorder;
@@ -849,6 +849,36 @@ public class JiraCardPrinterFrame {
         }
     }
 
+    private void lblUpdateMouseClicked(MouseEvent e) {
+        lblUpdate.setEnabled(false);
+//        jiraFrame.setVisible(false);
+
+        boolean hasUpdates = JiraAutoUpdater.checkUpdates();
+
+        if (hasUpdates) {
+            int ret = JOptionPane.showOptionDialog
+                    (jiraFrame, "存在新版本【TAG:" + JiraAutoUpdater.LATEST_TAG_NAME + "】" +
+                                    "\n\n 更新说明：" +
+                                    "\n-------------------------------\n" +
+                                    JiraAutoUpdater.LATEST_DESC +
+                                    "\n-------------------------------\n" +
+                                    "\n 是否更新？", "提示",
+                            JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE, null, null, null);
+
+            if (JOptionPane.OK_OPTION == ret) {
+                jiraFrame.setVisible(false);
+                new InstallAssistFrame().show(jiraFrame);
+                jiraFrame.dispose();
+            }
+        } else {
+            JOptionPane.showMessageDialog
+                    (jiraFrame, "该版本已经最新, 无需更新!");
+        }
+
+//        jiraFrame.setVisible(true);
+        lblUpdate.setEnabled(true);
+    }
+
     private void initComponents() {
         // JFormDesigner - Component initialization - DO NOT MODIFY  //GEN-BEGIN:initComponents
         jiraFrame = new JFrame();
@@ -870,6 +900,7 @@ public class JiraCardPrinterFrame {
         lblBoardCount = new JLabel();
         lblSprintCount = new JLabel();
         lblIssueCount = new JLabel();
+        lblUpdate = new JLabel();
         boardPanel = new JPanel();
         label4 = new JLabel();
         label5 = new JLabel();
@@ -902,7 +933,7 @@ public class JiraCardPrinterFrame {
         {
             jiraFrame.setForeground(SystemColor.textHighlight);
             jiraFrame.setBackground(new Color(204, 204, 255));
-            jiraFrame.setTitle("Jira\u770b\u677f\u6253\u5370 - v0.1");
+            jiraFrame.setTitle("Jira\u770b\u677f\u6253\u5370 - v1.1 By Nicholas");
             jiraFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
             jiraFrame.setFont(new Font("Lucida Grande", Font.BOLD, 13));
             jiraFrame.setResizable(false);
@@ -1032,7 +1063,7 @@ public class JiraCardPrinterFrame {
                     statusPanel.setBorder(LineBorder.createBlackLineBorder());
                     statusPanel.setFont(new Font("Lucida Grande", Font.PLAIN, 13));
                     statusPanel.setLayout(new GridBagLayout());
-                    ((GridBagLayout)statusPanel.getLayout()).columnWidths = new int[] {90, 76, 78, 157, 107, 106, 97, 57, 63, 0};
+                    ((GridBagLayout)statusPanel.getLayout()).columnWidths = new int[] {90, 76, 78, 157, 107, 106, 97, 70, 42, 0};
                     ((GridBagLayout)statusPanel.getLayout()).rowHeights = new int[] {30, 0};
                     ((GridBagLayout)statusPanel.getLayout()).columnWeights = new double[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0E-4};
                     ((GridBagLayout)statusPanel.getLayout()).rowWeights = new double[] {0.0, 1.0E-4};
@@ -1095,6 +1126,22 @@ public class JiraCardPrinterFrame {
                     statusPanel.add(lblIssueCount, new GridBagConstraints(6, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
                         new Insets(0, 0, 0, 5), 0, 0));
+
+                    //---- lblUpdate ----
+                    lblUpdate.setText("=\u68c0\u67e5\u66f4\u65b0=");
+                    lblUpdate.setHorizontalAlignment(SwingConstants.CENTER);
+                    lblUpdate.setFont(new Font("Lucida Grande", Font.PLAIN, 13));
+                    lblUpdate.setBorder(LineBorder.createBlackLineBorder());
+                    lblUpdate.setPreferredSize(new Dimension(74, 25));
+                    lblUpdate.addMouseListener(new MouseAdapter() {
+                        @Override
+                        public void mouseClicked(MouseEvent e) {
+                            lblUpdateMouseClicked(e);
+                        }
+                    });
+                    statusPanel.add(lblUpdate, new GridBagConstraints(8, 0, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL,
+                        new Insets(0, 0, 0, 0), 0, 0));
                 }
                 dialogPane.add(statusPanel, new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
                     GridBagConstraints.CENTER, GridBagConstraints.BOTH,
@@ -1113,7 +1160,7 @@ public class JiraCardPrinterFrame {
                     //---- label4 ----
                     label4.setText("Boards:");
                     label4.setHorizontalAlignment(SwingConstants.CENTER);
-                    label4.setFont(new Font("Lucida Grande", Font.BOLD, 13));
+                    label4.setFont(new Font("Tahoma", Font.BOLD, 13));
                     label4.setIcon(new ImageIcon(getClass().getResource("/images/jira/board.png")));
                     boardPanel.add(label4, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
@@ -1121,7 +1168,7 @@ public class JiraCardPrinterFrame {
 
                     //---- label5 ----
                     label5.setText("Active Sprints");
-                    label5.setFont(new Font("Lucida Grande", Font.BOLD, 13));
+                    label5.setFont(new Font("Tahoma", Font.BOLD, 13));
                     label5.setIcon(new ImageIcon(getClass().getResource("/images/jira/sprint.png")));
                     boardPanel.add(label5, new GridBagConstraints(2, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.VERTICAL,
@@ -1129,7 +1176,7 @@ public class JiraCardPrinterFrame {
 
                     //---- label6 ----
                     label6.setText("Story / Task / Subtask");
-                    label6.setFont(new Font("Lucida Grande", Font.BOLD, 13));
+                    label6.setFont(new Font("Tahoma", Font.BOLD, 13));
                     label6.setIcon(new ImageIcon(getClass().getResource("/images/jira/card.png")));
                     boardPanel.add(label6, new GridBagConstraints(3, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.VERTICAL,
@@ -1229,7 +1276,7 @@ public class JiraCardPrinterFrame {
 
                         //---- optAll ----
                         optAll.setText("All");
-                        optAll.setFont(new Font("Lucida Grande", Font.BOLD, 12));
+                        optAll.setFont(new Font("Tahoma", Font.BOLD, 12));
                         optAll.addMouseListener(new MouseAdapter() {
                             @Override
                             public void mouseClicked(MouseEvent e) {
@@ -1242,7 +1289,7 @@ public class JiraCardPrinterFrame {
 
                         //---- optCancel ----
                         optCancel.setText("None");
-                        optCancel.setFont(new Font("Lucida Grande", Font.BOLD, 12));
+                        optCancel.setFont(new Font("Tahoma", Font.BOLD, 12));
                         optCancel.addMouseListener(new MouseAdapter() {
                             @Override
                             public void mouseClicked(MouseEvent e) {
@@ -1457,6 +1504,7 @@ public class JiraCardPrinterFrame {
     private JLabel lblBoardCount;
     private JLabel lblSprintCount;
     private JLabel lblIssueCount;
+    private JLabel lblUpdate;
     private JPanel boardPanel;
     private JLabel label4;
     private JLabel label5;
