@@ -42,6 +42,165 @@ import java.util.List;
 public class JiraCardPrinterFrame {
     public JiraCardPrinterFrame() {
         initComponents();
+
+        initCompSize();
+    }
+
+    private void initCompSize() {
+        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+        int screenWidth = screenSize.width;
+        int screenHeight = screenSize.height;
+
+        int preferredWidth  = Math.min((int)(screenWidth * 0.7), 900);
+        int preferredHeight = Math.min((int)(screenHeight * 0.9), screenHeight - 100); //Math.min(767, screenHeight - 100);
+
+        jiraFrame.setSize(preferredWidth, preferredHeight);
+        jiraFrame.setLocation((screenWidth - preferredWidth) / 2, 10);
+
+        repaintSize();
+
+        jiraFrame.addComponentListener( new ComponentAdapter() {
+            @Override
+            public void componentResized( ComponentEvent e ) {
+                repaintSize();
+            }
+        } );
+
+    }
+
+    private void repaintSize() {
+//        for (Component c : dialogPane.getComponents()) {
+//        }
+
+        resetPanel(dialogPane, jiraFrame.getWidth(), 0, jiraFrame.getHeight(), 1);
+
+        int boardPanelWidth  = jiraFrame.getWidth() - 5;
+        int boardPanelHeight = jiraFrame.getHeight() - serverPanel.getHeight() - statusPanel.getHeight() - 50;
+        resetPanel(boardPanel, boardPanelWidth, 3, boardPanelHeight, 2);
+
+//        resetPanel(serverPanel, boardPanelWidth, -1, -1, -1);
+        resetPanel(statusPanel, boardPanelWidth, 9, -1, -1);
+//                serverPanel.setSize(jiraFrame.getWidth() - 5, serverPanel.getHeight());
+//                serverPanel.repaint();
+//
+//                statusPanel.setSize(jiraFrame.getWidth() - 5, statusPanel.getHeight());
+//                statusPanel.repaint();
+//                scrollPaneBoard.setSize(scrollPaneBoard.getWidth(), treeHeight);
+//                scrollPaneBoard.repaint();
+//                scrollPaneSprint.setSize(scrollPaneSprint.getWidth(), treeHeight);
+//                scrollPaneSprint.repaint();
+//                scrollPaneCard.setSize(boardPanel.getWidth(), treeHeight);
+//                scrollPaneCard.repaint();
+//                scrollPane3.setSize(jiraFrame.getWidth() - scrollPaneBoard.getWidth() - scrollPaneSprint.getWidth() - 2, scrollPane3.getHeight());
+//                scrollPane3.repaint();
+    }
+
+    //动态变化某一行或者某一列的长度
+    private void resetPanel(JPanel panel, int totalColWidth, int colIdex, int totalRowHeight, int rowIndex) {
+
+        GridBagLayout myPanel = ((GridBagLayout) panel.getLayout());
+
+        if (totalColWidth > 0) {
+            int[] cols = myPanel.columnWidths;
+
+            if (colIdex >= 0) {
+                //传入的序号是正值，就把这个序号当做动态变化列
+                myPanel.columnWidths = resetSpecificIndex(cols, totalColWidth, colIdex);
+//                cols[colIdex] = totalColWidth - calcSumOfArrayExcept(cols, colIdex);
+//                ((GridBagLayout) panel.getLayout()).columnWidths = cols;
+            } else {
+                //传入的序号是负值，表示所有行列按照比例增加或缩小
+                myPanel.columnWidths = resetAll(cols, totalColWidth);
+            }
+        }
+
+        if (totalRowHeight > 0) {
+            int[] rows = myPanel.rowHeights;
+
+            if (rowIndex >= 0) {
+                myPanel.rowHeights = resetSpecificIndex(rows, totalRowHeight, rowIndex);
+//                rows[rowIndex] = totalRowHeight - calcSumOfArrayExcept(rows, rowIndex);
+//                ((GridBagLayout) panel.getLayout()).rowHeights = rows;
+            } else {
+                myPanel.rowHeights = resetAll(rows, totalRowHeight);
+            }
+        }
+
+        panel.repaint();
+    }
+
+    private int[] resetSpecificIndex(int[] arrays, int total, int index) {
+        arrays[index] = total - calcSumOfArrayExcept(arrays, index);
+        return arrays;
+    }
+
+    private int[] resetAll(int[] arrays, int total) {
+        int sum = calcSumOfArrayExcept(arrays, -1);
+        if (sum == 0) return arrays;
+        double rate = (double)total / (double)sum;
+
+//        if (rate < 1.1 && rate > 0.9) {
+//            //缩放比例太小
+//            arrays[arrays.length - 1] = total - calcSumOfArrayExcept(arrays, arrays.length - 1);
+//            return arrays;
+//        }
+
+        int sumWithoutLast = 0;
+        for (int i=0; i<arrays.length; i++) {
+            if (i == arrays.length - 1) {
+                arrays[i] = total - sumWithoutLast;
+                break;
+            }
+
+            int tmp = (int)(arrays[i] * rate);
+            sumWithoutLast += tmp;
+            arrays[i] = tmp;
+        }
+
+        return arrays;
+    }
+
+    private int calcSumOfArrayExcept(int[] arrays, int exclude_index) {
+        int sum = 0;
+        for (int i=0; i<arrays.length; i++) {
+            if (i != exclude_index) {
+                sum += arrays[i];
+            }
+        }
+        return sum;
+    }
+
+    /**
+     * frame中的控件自适应frame大小：改变大小位置和字体
+     * @param frame 要控制的窗体
+     * @param proportionW 当前和原始的比例
+     */
+    public static void modifyComponentSize(JFrame frame,float proportionW,float proportionH){
+
+        try
+        {
+            Component[] components = frame.getRootPane().getContentPane().getComponents();
+            for(Component co:components)
+            {
+//              String a = co.getClass().getName();//获取类型名称
+//              if(a.equals("javax.swing.JLabel"))
+//              {
+//              }
+                float locX = co.getX() * proportionW;
+                float locY = co.getY() * proportionH;
+                float width = co.getWidth() * proportionW;
+                float height = co.getHeight() * proportionH;
+                co.setLocation((int)locX, (int)locY);
+                co.setSize((int)width, (int)height);
+                int size = (int)(co.getFont().getSize() * proportionH);
+                Font font = new Font(co.getFont().getFontName(), co.getFont().getStyle(), size);
+                co.setFont(font);
+            }
+        }
+        catch (Exception e)
+        {
+            // TODO: handle exception
+        }
     }
 
     private final static String SPLIT                   = "___";
@@ -902,10 +1061,10 @@ public class JiraCardPrinterFrame {
         lblIssueCount = new JLabel();
         lblUpdate = new JLabel();
         boardPanel = new JPanel();
-        label4 = new JLabel();
+        lblTitleBoards = new JLabel();
         label5 = new JLabel();
         label6 = new JLabel();
-        scrollPane1 = new JScrollPane();
+        boardFilterPanel = new JScrollPane();
         txtFilterBoard = new JTextField();
         scrollPane2 = new JScrollPane();
         lblSelectedBoard = new JLabel();
@@ -914,7 +1073,7 @@ public class JiraCardPrinterFrame {
         scrollPaneBoard = new JScrollPane();
         scrollPaneSprint = new JScrollPane();
         scrollPaneCard = new JScrollPane();
-        panel1 = new JPanel();
+        checkTreePanel = new JPanel();
         label9 = new JLabel();
         optAll = new JRadioButton();
         optCancel = new JRadioButton();
@@ -936,7 +1095,7 @@ public class JiraCardPrinterFrame {
             jiraFrame.setTitle("Jira\u770b\u677f\u6253\u5370 - v1.1 By Nicholas");
             jiraFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
             jiraFrame.setFont(new Font("Lucida Grande", Font.BOLD, 13));
-            jiraFrame.setResizable(false);
+            jiraFrame.setMinimumSize(new Dimension(800, 700));
             jiraFrame.addWindowListener(new WindowAdapter() {
                 @Override
                 public void windowActivated(WindowEvent e) {
@@ -1152,17 +1311,17 @@ public class JiraCardPrinterFrame {
                     boardPanel.setBackground(Color.white);
                     boardPanel.setBorder(LineBorder.createBlackLineBorder());
                     boardPanel.setLayout(new GridBagLayout());
-                    ((GridBagLayout)boardPanel.getLayout()).columnWidths = new int[] {10, 225, 224, 431, 0};
-                    ((GridBagLayout)boardPanel.getLayout()).rowHeights = new int[] {53, 41, 391, 98, 0};
+                    ((GridBagLayout)boardPanel.getLayout()).columnWidths = new int[] {10, 225, 225, 439, 0};
+                    ((GridBagLayout)boardPanel.getLayout()).rowHeights = new int[] {53, 41, 391, 117, 0};
                     ((GridBagLayout)boardPanel.getLayout()).columnWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};
                     ((GridBagLayout)boardPanel.getLayout()).rowWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};
 
-                    //---- label4 ----
-                    label4.setText("Boards:");
-                    label4.setHorizontalAlignment(SwingConstants.CENTER);
-                    label4.setFont(new Font("Tahoma", Font.BOLD, 13));
-                    label4.setIcon(new ImageIcon(getClass().getResource("/images/jira/board.png")));
-                    boardPanel.add(label4, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
+                    //---- lblTitleBoards ----
+                    lblTitleBoards.setText("Boards:");
+                    lblTitleBoards.setHorizontalAlignment(SwingConstants.CENTER);
+                    lblTitleBoards.setFont(new Font("Tahoma", Font.BOLD, 13));
+                    lblTitleBoards.setIcon(new ImageIcon(getClass().getResource("/images/jira/board.png")));
+                    boardPanel.add(lblTitleBoards, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                         new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1182,9 +1341,9 @@ public class JiraCardPrinterFrame {
                         GridBagConstraints.CENTER, GridBagConstraints.VERTICAL,
                         new Insets(0, 0, 5, 0), 0, 0));
 
-                    //======== scrollPane1 ========
+                    //======== boardFilterPanel ========
                     {
-                        scrollPane1.setBorder(LineBorder.createBlackLineBorder());
+                        boardFilterPanel.setBorder(LineBorder.createBlackLineBorder());
 
                         //---- txtFilterBoard ----
                         txtFilterBoard.setToolTipText("\u6a21\u7cca\u67e5\u8be2\u56de\u8f66\u8fc7\u6ee4");
@@ -1212,9 +1371,9 @@ public class JiraCardPrinterFrame {
                                 txtFilterBoardFocusLost(e);
                             }
                         });
-                        scrollPane1.setViewportView(txtFilterBoard);
+                        boardFilterPanel.setViewportView(txtFilterBoard);
                     }
-                    boardPanel.add(scrollPane1, new GridBagConstraints(1, 1, 1, 1, 0.0, 0.0,
+                    boardPanel.add(boardFilterPanel, new GridBagConstraints(1, 1, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                         new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1243,6 +1402,7 @@ public class JiraCardPrinterFrame {
                         lblSelectedBoardSprint.setBorder(LineBorder.createBlackLineBorder());
                         lblSelectedBoardSprint.setOpaque(true);
                         lblSelectedBoardSprint.setBackground(new Color(214, 217, 223));
+                        lblSelectedBoardSprint.setHorizontalAlignment(SwingConstants.CENTER);
                         scrollPane3.setViewportView(lblSelectedBoardSprint);
                     }
                     boardPanel.add(scrollPane3, new GridBagConstraints(3, 1, 1, 1, 0.0, 0.0,
@@ -1258,19 +1418,19 @@ public class JiraCardPrinterFrame {
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                         new Insets(0, 0, 5, 0), 0, 0));
 
-                    //======== panel1 ========
+                    //======== checkTreePanel ========
                     {
-                        panel1.setBackground(Color.white);
-                        panel1.setLayout(new GridBagLayout());
-                        ((GridBagLayout)panel1.getLayout()).columnWidths = new int[] {225, 77, 73, 118, 163, 0, 0};
-                        ((GridBagLayout)panel1.getLayout()).rowHeights = new int[] {40, 32, 40, 0, 0};
-                        ((GridBagLayout)panel1.getLayout()).columnWeights = new double[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0E-4};
-                        ((GridBagLayout)panel1.getLayout()).rowWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};
+                        checkTreePanel.setBackground(Color.white);
+                        checkTreePanel.setLayout(new GridBagLayout());
+                        ((GridBagLayout)checkTreePanel.getLayout()).columnWidths = new int[] {82, 77, 73, 118, 140, 0, 0};
+                        ((GridBagLayout)checkTreePanel.getLayout()).rowHeights = new int[] {40, 32, 40, 10, 0};
+                        ((GridBagLayout)checkTreePanel.getLayout()).columnWeights = new double[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0E-4};
+                        ((GridBagLayout)checkTreePanel.getLayout()).rowWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};
 
                         //---- label9 ----
                         label9.setText("\u7ef4\u5ea6\u4e00\uff1a");
                         label9.setHorizontalAlignment(SwingConstants.TRAILING);
-                        panel1.add(label9, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(label9, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1283,7 +1443,7 @@ public class JiraCardPrinterFrame {
                                 optAllMouseClicked(e);
                             }
                         });
-                        panel1.add(optAll, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(optAll, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1296,7 +1456,7 @@ public class JiraCardPrinterFrame {
                                 optCancelMouseClicked(e);
                             }
                         });
-                        panel1.add(optCancel, new GridBagConstraints(3, 0, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(optCancel, new GridBagConstraints(3, 0, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1315,14 +1475,14 @@ public class JiraCardPrinterFrame {
                                 btnGenerateMouseClicked(e);
                             }
                         });
-                        panel1.add(btnGenerate, new GridBagConstraints(4, 0, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(btnGenerate, new GridBagConstraints(4, 0, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
                         //---- label7 ----
                         label7.setText("\u7ef4\u5ea6\u4e8c\uff1a");
                         label7.setHorizontalAlignment(SwingConstants.TRAILING);
-                        panel1.add(label7, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(label7, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1335,7 +1495,7 @@ public class JiraCardPrinterFrame {
                                 chkStoryMouseClicked(e);
                             }
                         });
-                        panel1.add(chkStory, new GridBagConstraints(1, 1, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(chkStory, new GridBagConstraints(1, 1, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1348,7 +1508,7 @@ public class JiraCardPrinterFrame {
                                 chkTaskMouseClicked(e);
                             }
                         });
-                        panel1.add(chkTask, new GridBagConstraints(2, 1, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(chkTask, new GridBagConstraints(2, 1, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1361,14 +1521,14 @@ public class JiraCardPrinterFrame {
                                 chkSubtaskMouseClicked(e);
                             }
                         });
-                        panel1.add(chkSubtask, new GridBagConstraints(3, 1, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(chkSubtask, new GridBagConstraints(3, 1, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
                         //---- label8 ----
                         label8.setText("\u7ef4\u5ea6\u4e09:  ");
                         label8.setHorizontalAlignment(SwingConstants.TRAILING);
-                        panel1.add(label8, new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(label8, new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1381,7 +1541,7 @@ public class JiraCardPrinterFrame {
                                 chkTodoMouseClicked(e);
                             }
                         });
-                        panel1.add(chkTodo, new GridBagConstraints(1, 2, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(chkTodo, new GridBagConstraints(1, 2, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1394,7 +1554,7 @@ public class JiraCardPrinterFrame {
                                 chkDoingMouseClicked(e);
                             }
                         });
-                        panel1.add(chkDoing, new GridBagConstraints(2, 2, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(chkDoing, new GridBagConstraints(2, 2, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1407,7 +1567,7 @@ public class JiraCardPrinterFrame {
                                 chkDoneMouseClicked(e);
                             }
                         });
-                        panel1.add(chkDone, new GridBagConstraints(3, 2, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(chkDone, new GridBagConstraints(3, 2, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1423,12 +1583,12 @@ public class JiraCardPrinterFrame {
                                 btnExportMouseClicked(e);
                             }
                         });
-                        panel1.add(btnExport, new GridBagConstraints(4, 2, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(btnExport, new GridBagConstraints(4, 2, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
                     }
-                    boardPanel.add(panel1, new GridBagConstraints(2, 3, 2, 1, 0.0, 0.0,
-                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                    boardPanel.add(checkTreePanel, new GridBagConstraints(1, 3, 3, 1, 0.0, 0.0,
+                        GridBagConstraints.EAST, GridBagConstraints.VERTICAL,
                         new Insets(0, 0, 0, 0), 0, 0));
                 }
                 dialogPane.add(boardPanel, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
@@ -1438,7 +1598,7 @@ public class JiraCardPrinterFrame {
             jiraFrameContentPane.add(dialogPane, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
                 GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                 new Insets(0, 0, 0, 0), 0, 0));
-            jiraFrame.setSize(910, 735);
+            jiraFrame.pack();
             jiraFrame.setLocationRelativeTo(null);
         }
 
@@ -1506,10 +1666,10 @@ public class JiraCardPrinterFrame {
     private JLabel lblIssueCount;
     private JLabel lblUpdate;
     private JPanel boardPanel;
-    private JLabel label4;
+    private JLabel lblTitleBoards;
     private JLabel label5;
     private JLabel label6;
-    private JScrollPane scrollPane1;
+    private JScrollPane boardFilterPanel;
     private JTextField txtFilterBoard;
     private JScrollPane scrollPane2;
     private JLabel lblSelectedBoard;
@@ -1518,7 +1678,7 @@ public class JiraCardPrinterFrame {
     private JScrollPane scrollPaneBoard;
     private JScrollPane scrollPaneSprint;
     private JScrollPane scrollPaneCard;
-    private JPanel panel1;
+    private JPanel checkTreePanel;
     private JLabel label9;
     private JRadioButton optAll;
     private JRadioButton optCancel;

@@ -12,6 +12,16 @@ public class PropertiesCache {
 //    public static final String OUTPUT_FOLDER = System.getProperty("user.dir") + File.separator + "JSCP_FILES" ;
 //    public static final String CONFIG_FILE = System.getProperty("user.dir") + File.separator +"CONF" + File.separator + "jscp.properties";
 
+    public static final String P_UPDATE_URL         = "autoupdate.url";
+    public static final String P_BOARD_FILTER       = "boardfilter";
+    public static final String P_HOST               = "host";
+    public static final String P_USER               = "user";
+    public static final String P_PWD                = "pwd";
+    public static final String P_COLORFUL           = "colorful";
+    public static final String P_SHOWALLCOLS        = "excelShowAllColumns";
+    public static final String P_CUSTOM_FIELD_KEYS  = "excel.customfield.keys";
+    public static final String P_CUSTOM_FIELD_NAMES = "excel.customfield.names";
+
     private static final String KEY = System.getProperty("java.version");
 
     private static final Properties configProp = new OrderedProperties();
@@ -22,11 +32,16 @@ public class PropertiesCache {
 
     static {
         configProp.put("JSCP_OWNER","nicholas.qu");
+        configProp.put(P_BOARD_FILTER,"");
+        configProp.put(P_HOST,"");
+        configProp.put(P_USER,"");
+        configProp.put(P_PWD,"");
         //New Features
-        configProp.put("colorful=1", "1");
-        configProp.put("excelShowAllColumns", "0");
-        configProp.put("excel.customfield.keys", "fields>customfield_11001");
-        configProp.put("excel.customfield.names", "实际耗费时间");
+        configProp.put(P_COLORFUL, "1");
+        configProp.put(P_SHOWALLCOLS, "0");
+        configProp.put(P_CUSTOM_FIELD_KEYS, "fields>customfield_11001");
+        configProp.put(P_CUSTOM_FIELD_NAMES, "实际耗费时间");
+        configProp.put(P_UPDATE_URL, "");
         read();
     }
 
@@ -45,9 +60,16 @@ public class PropertiesCache {
         FileReader reader = null;
         try {
             reader = new FileReader(configFile);
-            configProp.load(reader);
+            int hashCode1 = configProp.hashCode();
+            Properties properties = new OrderedProperties();
+            properties.load(reader);
+            int hashCode2 = properties.hashCode();
+            if (hashCode1 != hashCode2) {
+                baselineProp.clear();
+                configProp.putAll(properties);
+                flush();
+            }
 
-            baselineProp.clear();
             baselineProp.putAll(configProp);
 
         } catch (FileNotFoundException e) {
@@ -82,34 +104,34 @@ public class PropertiesCache {
     }
 
     public static void setHost(String value) {
-        configProp.put("host", value);
+        configProp.put(P_HOST, value);
     }
 
     public static void setUserName(String value) {
-        configProp.put("user", value);
+        configProp.put(P_USER, value);
     }
 
     public static void setPassword(String value) {
         try {
-            configProp.put("pwd", encryption(value));
+            configProp.put(P_PWD, encryption(value));
         } catch (UnsupportedEncodingException e) {
         }
     }
 
     public static void setBoardFilter(String value) {
-        configProp.put("boardfilter", value);
+        configProp.put(P_BOARD_FILTER, value);
     }
 
     public static String getHost() {
-        return (String)configProp.get("host");
+        return (String)configProp.get(P_HOST);
     }
 
     public static String getUserName() {
-        return (String)configProp.get("user");
+        return (String)configProp.get(P_USER);
     }
 
     public static String getPassword() {
-        String pwd = (String)configProp.get("pwd");
+        String pwd = (String)configProp.get(P_PWD);
 
         try {
             return decipher(pwd);
@@ -119,7 +141,7 @@ public class PropertiesCache {
     }
 
     public static String getBoardFilter() {
-        return (String)configProp.get("boardfilter");
+        return (String)configProp.get(P_BOARD_FILTER);
     }
 
     private static String encryption(String content) throws UnsupportedEncodingException {
@@ -180,6 +202,9 @@ public class PropertiesCache {
         return value;
     }
 
+    public static String getUpdateUrl() {
+        return getProp(P_UPDATE_URL);
+    }
     public static void setProp(String key, String value) {
         configProp.put(key, value);
     }

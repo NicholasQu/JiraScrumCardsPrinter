@@ -1,10 +1,12 @@
 package cc.xiaoquer.jira.autoupdater;
 
 import cc.xiaoquer.jira.constant.FoldersConsts;
+import cc.xiaoquer.jira.storage.PropertiesCache;
 import cc.xiaoquer.jira.ui.InstallAssistFrame;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.asynchttpclient.AsyncHttpClient;
 import org.asynchttpclient.DefaultAsyncHttpClient;
 import org.asynchttpclient.Response;
@@ -69,9 +71,12 @@ public class JiraAutoUpdater {
 
             LATEST_ASSET_SIZE = asset.getDoubleValue("size");
 
-            LATEST_DOWN_URL = asset.getString("browser_download_url");
-            if (LATEST_DOWN_URL == null) {
-                LATEST_DOWN_URL = URL_JAR_DOWNLOAD.replace("{tagName}", LATEST_TAG_NAME);
+            LATEST_DOWN_URL = PropertiesCache.getUpdateUrl();
+            if (StringUtils.isBlank(LATEST_DOWN_URL)) {
+                LATEST_DOWN_URL = asset.getString("browser_download_url");
+                if (LATEST_DOWN_URL == null) {
+                    LATEST_DOWN_URL = URL_JAR_DOWNLOAD.replace("{tagName}", LATEST_TAG_NAME);
+                }
             }
 
 //            LATEST_DOWN_URL = LATEST_DOWN_URL.replace("github.com", "192.168.0.254");
@@ -89,6 +94,7 @@ public class JiraAutoUpdater {
         System.out.println("Lastest_TagName: " + LATEST_TAG_NAME + ", Current_Jar's_Version: " + currentJarVersion);
         System.out.println("Lastest_Size: " + LATEST_ASSET_SIZE);
         System.out.println("Lastest_ReleaseNotes: \n" + LATEST_DESC);
+        System.out.println("Lastest_URL: \n" + LATEST_DOWN_URL);
 
         if (!LATEST_TAG_NAME.equals(currentJarVersion)) return true;
 
@@ -119,6 +125,8 @@ public class JiraAutoUpdater {
         GIT_NOT_CONNECTED_COUNT.set(0);
         stopFlag = false;
         downloading_mutex = true;
+        isDownloadDone = false;
+        isRenderDone = false;
 
         final File jarFileOrigin = new File(FoldersConsts.JAR_FILE);
         final File jarFileDownloading  = new File(FoldersConsts.JAR_FILE_DOWN_ING);
@@ -137,8 +145,6 @@ public class JiraAutoUpdater {
         downloadThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                isDownloadDone = false;
-
                 System.out.println(getThreadInfo() + "-Downloading Starts From " + LATEST_DOWN_URL);
                 System.out.println(getThreadInfo() + "-Downloading Saves To " + jarFileDownloading.getAbsolutePath());
 //                while (!stopFlag && !isDownloadDone) {
@@ -163,8 +169,6 @@ public class JiraAutoUpdater {
         renderThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                isRenderDone = false;
-
                 System.out.println(getThreadInfo() + "-Check File Size..." + jarFileDownloading.getAbsolutePath());
 
                 while (!stopFlag && !isRenderDone) {
@@ -189,51 +193,28 @@ public class JiraAutoUpdater {
                         Toolkit.getDefaultToolkit().beep();
                         isRenderDone = true;
                         totalSize = size;
+
+                        //下载完成更改文件名
+                        try {
+                            Thread.sleep(1000L);
+
+                            //第一步：备份源文件
+                            File backupFile = new File(FoldersConsts.JAR_BAK_FILE + System.currentTimeMillis());
+                            FileUtils.copyFile(jarFileOrigin, backupFile);
+                            System.out.println(getThreadInfo() + "-Backup File From " + jarFileOrigin.getName() + " To " + backupFile.getName());
+
+                            //第二步：新建一个更新文件下载完成的标识新文件。
+                            File downloadDoneFile = new File(FoldersConsts.JAR_FILE_DOWN_DONE);
+                            FileUtils.touch(downloadDoneFile);
+                            System.out.println(getThreadInfo() + "-Touch File " + downloadDoneFile.getName());
+
+                            //第三步：文件更名完毕，才算真正完成，才能enable重启应用按钮
+                            frame.renderUI(totalSize, 101);
+                        } catch (Exception e1) {
+                            throw new RuntimeException(e1);
+                        }
+
                     }
-                }
-
-
-                //下载完成更改文件名
-                try {
-                    Thread.sleep(1000L);
-
-                    //第一步：备份源文件
-                    File backupFile = new File(FoldersConsts.JAR_BAK_FILE + System.currentTimeMillis());
-                    FileUtils.copyFile(jarFileOrigin, backupFile);
-                    System.out.println(getThreadInfo() + "-Backup File From " + jarFileOrigin.getName() + " To " + backupFile.getName());
-//                    boolean renameSucc = false;
-//                    int loopCheck = 0;
-//                    do {
-//                        Thread.sleep(1000L);
-//                        loopCheck++;
-//                        FileUtils.copyFile(jarFileOrigin, backupFile);
-//                        renameSucc = backupFile.exists();
-//                        System.out.println(getThreadInfo() + "Rename Files " + loopCheck + " Times..." + renameSucc);
-//                    } while (!renameSucc && loopCheck <= 5);
-//                    System.out.println(getThreadInfo() + "-Origin Exists: " + jarFileOrigin.exists() + " Dest Exists: " + backupFile.exists());
-
-                    //第二步：新建一个更新文件下载完成的标识新文件。
-                    File downloadDoneFile = new File(FoldersConsts.JAR_FILE_DOWN_DONE);
-                    FileUtils.touch(downloadDoneFile);
-                    System.out.println(getThreadInfo() + "-Touch File " + downloadDoneFile.getName());
-//                    renameSucc = false;
-//                    loopCheck = 0;
-//                    do {
-//                        Thread.sleep(1000L);
-//                        loopCheck++;
-////                        FileUtils.copyFile(jarFileDownloading, tempFile);
-//                        //将下载中的文件名更改为下载完成。
-//                        FileUtils.moveFile(jarFileDownloading, downloadDoneFile);
-//                        renameSucc = !jarFileDownloading.exists() && downloadDoneFile.exists();
-////                        renameSucc = jarFileDownloading.renameTo(finalFile);
-//                    } while (!renameSucc && loopCheck <= 5);
-
-//                    System.out.println(getThreadInfo() + "-Origin Exists: " + jarFileDownloading.exists() + " Dest Exists: " + jarFileOrigin.exists());
-
-                    //第三步：文件更名完毕，才算真正完成，才能enable重启应用按钮
-                    frame.renderUI(totalSize, 101);
-                } catch (Exception e1) {
-                    throw new RuntimeException(e1);
                 }
 
 //                System.out.println("Create Tag Identifier File..." + LATEST_TAG_IDENTIFIER.getAbsolutePath());

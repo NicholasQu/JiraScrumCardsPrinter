@@ -16,8 +16,7 @@ new FormModel {
 			"title": "Jira看板打印 - v1.1 By Nicholas"
 			"defaultCloseOperation": 3
 			"font": new java.awt.Font( "Lucida Grande", 1, 13 )
-			"resizable": false
-			"$sizePolicy": 1
+			"minimumSize": new java.awt.Dimension( 800, 700 )
 			addEvent( new FormEvent( "java.awt.event.WindowListener", "windowClosing", "jiraFrameWindowClosing", true ) )
 			addEvent( new FormEvent( "java.awt.event.WindowListener", "windowActivated", "jiraFrameWindowActivated", true ) )
 			add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.GridBagLayout ) {
@@ -202,8 +201,8 @@ new FormModel {
 					"gridy": 2
 				} )
 				add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.GridBagLayout ) {
-					"$columnSpecs": "5, 220, 219, 431"
-					"$rowSpecs": "48, 36, 386, 98"
+					"$columnSpecs": "5, 220, 220, 439"
+					"$rowSpecs": "48, 36, 386, 117"
 					"$hGap": 5
 					"$vGap": 5
 					"$alignLeft": true
@@ -213,7 +212,7 @@ new FormModel {
 					"background": new java.awt.Color( 255, 255, 255, 255 )
 					"border": #LineBorder0
 					add( new FormComponent( "javax.swing.JLabel" ) {
-						name: "label4"
+						name: "lblTitleBoards"
 						"text": "Boards:"
 						"horizontalAlignment": 0
 						"font": new java.awt.Font( "Tahoma", 1, 13 )
@@ -240,7 +239,7 @@ new FormModel {
 						"hAlign": 0
 					} )
 					add( new FormContainer( "javax.swing.JScrollPane", new FormLayoutManager( class javax.swing.JScrollPane ) ) {
-						name: "scrollPane1"
+						name: "boardFilterPanel"
 						"border": #LineBorder0
 						add( new FormComponent( "javax.swing.JTextField" ) {
 							name: "txtFilterBoard"
@@ -285,6 +284,7 @@ new FormModel {
 							"border": #LineBorder0
 							"opaque": true
 							"background": new java.awt.Color( 214, 217, 223, 255 )
+							"horizontalAlignment": 0
 						} )
 					}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
 						"gridx": 3
@@ -309,14 +309,14 @@ new FormModel {
 						"gridy": 2
 					} )
 					add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.GridBagLayout ) {
-						"$columnSpecs": "220, 72, 68, 113, 158, 0"
-						"$rowSpecs": "35, 27, 35, 0"
+						"$columnSpecs": "77, 72, 68, 113, 135, 0"
+						"$rowSpecs": "35, 27, 35, 10"
 						"$hGap": 5
 						"$vGap": 5
-						"$alignLeft": true
 						"$alignTop": true
+						"$alignLeft": true
 					} ) {
-						name: "panel1"
+						name: "checkTreePanel"
 						"background": sfield java.awt.Color white
 						add( new FormComponent( "javax.swing.JLabel" ) {
 							name: "label9"
@@ -436,9 +436,10 @@ new FormModel {
 							"gridy": 2
 						} )
 					}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
-						"gridx": 2
+						"gridx": 1
 						"gridy": 3
-						"gridwidth": 2
+						"gridwidth": 3
+						"hAlign": 4
 					} )
 				}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
 					"gridy": 1
@@ -446,7 +447,7 @@ new FormModel {
 			}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) )
 		}, new FormLayoutConstraints( null ) {
 			"location": new java.awt.Point( 0, 10 )
-			"size": new java.awt.Dimension( 910, 735 )
+			"size": new java.awt.Dimension( 910, 745 )
 		} )
 		add( new FormNonVisual( "javax.swing.ButtonGroup" ) {
 			name: "buttonGroup1"
