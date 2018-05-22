@@ -44,9 +44,10 @@ public class ExcelProcessor {
 
     public static final int COL_INIT_NUM = COL_WIDTH_PIXEL.length;
 
-    public static int COL_ADD_NUM  = 0;
+    public static int COL_ADD_NUM  = 0;          //自定义字段的数量
     public static String[] CUSTOM_KEY_ARR;
     public static String[] CUSTOM_NAME_ARR;
+    public static Double[] CUSTOM_RECORDS_SUM;    //自定义字段如果是数值型，自动计算一个合计值
     public static boolean CUSTOM_FIELDS_ADDED = false;   //是否已经添加了自定义的列
 
     //显示所有列 对应环境变量 excelShowAllColumns
@@ -170,6 +171,8 @@ public class ExcelProcessor {
         for (int colIdx = 0; colIdx < COL_WIDTH_PIXEL.length; colIdx++) {
             sumRow.createCell(colIdx).setCellValue("");
         }
+        //如果自定义字段都是数值，那自动给一个合计值在汇总行
+        CUSTOM_RECORDS_SUM = new Double[COL_ADD_NUM];
 
         //写入实体数据，实际应用中这些数据从数据库得到,对象封装数据，集合包对象。对象的属性值对应表的每行的值
         String previousTeam = null;
@@ -209,6 +212,12 @@ public class ExcelProcessor {
         sumRow.getCell(COL_IDX_OWNER).setCellValue("总人力: " + PEOPLE.size());
         sumRow.getCell(COL_IDX_EST_HOUR).setCellValue("总估时: " + DF.format(TOTAL_ESTIMATE));
         sumRow.getCell(COL_IDX_LEFT_HOUR).setCellValue("总剩余: " + DF.format(TOTAL_REMAIN));
+        for (int i = 0; i < COL_ADD_NUM; i++) {
+            Double d = CUSTOM_RECORDS_SUM[i];
+            if (d!=null && d > 0.0) {
+                sumRow.getCell(COL_INIT_NUM + i).setCellValue(DF.format(d));
+            }
+        }
 
         //分组的加减号放到上方
         sheet.setRowSumsBelow(false);
@@ -310,10 +319,24 @@ public class ExcelProcessor {
         linkCell.setHyperlink(link);
 
         for (int i = 0; i < COL_ADD_NUM; i++) {
-            row.createCell(columnIdx++).setCellValue(issue.getCustomFields().get(CUSTOM_KEY_ARR[i]));
+            String customValue = issue.getCustomFields().get(CUSTOM_KEY_ARR[i]);
+            row.createCell(columnIdx++).setCellValue(customValue);
+
+            double addedValue = toDouble(customValue);
+            if (addedValue != Double.MAX_VALUE) {
+                CUSTOM_RECORDS_SUM[i] = (CUSTOM_RECORDS_SUM[i]==null ? 0.0:CUSTOM_RECORDS_SUM[i]);
+                CUSTOM_RECORDS_SUM[i] += addedValue;
+            }
         }
     }
 
+    private static double toDouble(String s) {
+        try {
+            return Double.parseDouble(s);
+        } catch (Exception e) {
+            return Double.MAX_VALUE;
+        }
+    }
     //渲染excel
     private static void renderExcel(HSSFWorkbook workbook, HSSFSheet sheet, int rowCount, int colCount) {
         //合并标题列

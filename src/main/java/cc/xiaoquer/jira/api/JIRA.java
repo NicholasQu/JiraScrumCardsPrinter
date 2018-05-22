@@ -111,6 +111,8 @@ public class JIRA {
             asyncHttpClient = new DefaultAsyncHttpClient();
         }
 
+        clearCache();
+
         try {
             //连接就获取看板列表
             getBoardMap(true);
@@ -147,19 +149,20 @@ public class JIRA {
         serverUrl = "";
         realm = null;
 
+        clearCache();
         try {
-            ALL_BOARD_MAP.clear();
-            ALL_SPRINT_MAP.clear();
-            ALL_ISSUE_MAP.clear();
-            BOARD_SPRINT_MAP.clear();
-            BOARD_SPRINT_PARENT_MAP.clear();
-
             asyncHttpClient.close();
         } catch (Exception e) {
         } finally {
             asyncHttpClient = null;
         }
-
+    }
+    private static void clearCache() {
+        ALL_BOARD_MAP.clear();
+        ALL_SPRINT_MAP.clear();
+        ALL_ISSUE_MAP.clear();
+        BOARD_SPRINT_MAP.clear();
+        BOARD_SPRINT_PARENT_MAP.clear();
     }
 
     public static Map<String, JiraBoard> getBoardMap(boolean forceRefresh) {
