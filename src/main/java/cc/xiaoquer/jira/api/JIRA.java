@@ -287,6 +287,24 @@ public class JIRA {
         }
     }
 
+    private static void queryMyOpenIssuesByJQL() {
+        StringBuffer jql = new StringBuffer("assignee=currentUser() AND resolution = Unresolved AND type!=Epic AND type!=Story order by project asc, sprint asc, updated DESC");
+        String encodedJQL = jql.toString();
+        try {
+            encodedJQL = URLEncoder.encode(encodedJQL, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+
+        int total = Integer.MAX_VALUE;
+        for (int i = 0; i <= total; i = i + PAGE_SIZE) {
+            String responseBody = getResponseRelative(SEARCH_JQL_BY_PROJECT_URL
+                    .replace("{jql}", encodedJQL).replace("{start}", String.valueOf(i)));
+
+            total = JSON.parseObject(responseBody).getInteger("total");
+        }
+    }
+
     /**
      * 解析story或者任务的子任务，拼装到JiraIssue类属性中
      */

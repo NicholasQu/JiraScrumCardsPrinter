@@ -1,6 +1,7 @@
 package cc.xiaoquer.jira;
 
 import cc.xiaoquer.jira.constant.FoldersConsts;
+import cc.xiaoquer.jira.ui.DailyTaskRecordFrame;
 import cc.xiaoquer.jira.ui.InstallAssistFrame;
 import cc.xiaoquer.jira.ui.JiraCardPrinterFrame;
 import org.apache.commons.io.FileUtils;
@@ -55,8 +56,9 @@ public class Main {
         }
 
         //********************** 本地运行 **********************
-        new JiraCardPrinterFrame().show();
+//        new JiraCardPrinterFrame().show();
 //        new InstallAssistFrame().show();
+        new DailyTaskRecordFrame().show();
     }
 
     private static void runAnother(String filePath) {
