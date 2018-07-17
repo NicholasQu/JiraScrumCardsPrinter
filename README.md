@@ -13,9 +13,7 @@ C:\Program Files\Java\jdk1.8.0_144
 --------------------------------------------------------------------------------
 
 2. 到百度网盘将JiraScrumCardsPrinter整个文件夹下载到本地，文件列表包括下图两个工具
-链接: https://pan.baidu.com/s/1hsw2fXE
-密码: 3cdi
-
+https://github.com/NicholasQu/JiraScrumCardsPrinter/releases/latest
 
 --------------------------------------------------------------------------------
 
