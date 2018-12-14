@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -62,6 +63,7 @@ public class JiraSprint extends AbstractJiraEntity {
      */
     public static Map<String, JiraSprint> toMap(String responseBody, String key) {
         Map<String, JiraSprint> localSprintsMap = new TreeMap<String, JiraSprint>();
+        Map<String, JiraSprint> historySprintsMap = new TreeMap<String, JiraSprint>();
 
         JSONObject jsonObject = JSON.parseObject(responseBody);
 
@@ -77,22 +79,31 @@ public class JiraSprint extends AbstractJiraEntity {
                 jiraSprint.setEndDate(tmpJo.getString("endDate"));
                 jiraSprint.setState(tmpJo.getString("state"));
 
-                if ("active".equalsIgnoreCase(jiraSprint.getState())) {
+                if (jiraSprint.isActive()) {
                     localSprintsMap.put(jiraSprint.getSprintId(), jiraSprint);
+                } else {
+                    historySprintsMap.put(jiraSprint.getSprintId(), jiraSprint);
                 }
             }
         }
 
         Map<String, JiraSprint> thisTimeSprintMap = JIRA.BOARD_SPRINT_MAP.get(key);
         if (thisTimeSprintMap == null) {
-            thisTimeSprintMap = new HashMap<>();
+            thisTimeSprintMap = new LinkedHashMap<>();
         }
         thisTimeSprintMap.putAll(localSprintsMap);
+        thisTimeSprintMap.putAll(historySprintsMap);
+
         JIRA.BOARD_SPRINT_MAP.put(key, thisTimeSprintMap);
 
         JIRA.ALL_SPRINT_MAP.putAll(localSprintsMap);
+        JIRA.ALL_SPRINT_MAP.putAll(historySprintsMap);
 
         return localSprintsMap;
+    }
+
+    public boolean isActive() {
+        return "active".equalsIgnoreCase(this.getState());
     }
 
 }

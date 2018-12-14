@@ -28,11 +28,7 @@
  * #L%
  */
 
-package cc.xiaoquer.jira.checkboxtree;
-
-import cc.xiaoquer.jira.api.JIRA;
-import cc.xiaoquer.jira.api.beans.JiraIssue;
-import com.alibaba.fastjson.JSON;
+package cc.xiaoquer.jira.uicomponents.checkboxtree;
 
 import java.awt.Component;
 import java.awt.event.ItemEvent;

@@ -9,12 +9,13 @@ import cc.xiaoquer.jira.api.beans.JiraBoard;
 import cc.xiaoquer.jira.api.beans.JiraIssue;
 import cc.xiaoquer.jira.api.beans.JiraSprint;
 import cc.xiaoquer.jira.autoupdater.JiraAutoUpdater;
-import cc.xiaoquer.jira.checkboxtree.CheckBoxNodeData;
-import cc.xiaoquer.jira.checkboxtree.CheckBoxNodeEditor;
-import cc.xiaoquer.jira.checkboxtree.CheckBoxNodeRenderer;
+import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeData;
+import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeEditor;
+import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeRenderer;
 import cc.xiaoquer.jira.excel.ExcelProcessor;
 import cc.xiaoquer.jira.html.HtmlGenerator;
 import cc.xiaoquer.jira.storage.PropertiesCache;
+import cc.xiaoquer.jira.uicomponents.jlist.JiraListCellRender;
 
 import javax.swing.*;
 import javax.swing.border.LineBorder;
@@ -130,7 +131,10 @@ public class JiraCardPrinterFrame {
     }
 
     private int[] resetSpecificIndex(int[] arrays, int total, int index) {
-        arrays[index] = total - calcSumOfArrayExcept(arrays, index);
+        int temp = total - calcSumOfArrayExcept(arrays, index);
+        if (temp > 0) {
+            arrays[index] = total - calcSumOfArrayExcept(arrays, index);
+        }
         return arrays;
     }
 
@@ -542,6 +546,8 @@ public class JiraCardPrinterFrame {
 
             sprintsModel.addElement(combineDisplayName(jiraSprint.getSprintId(), jiraSprint.getSprintName()));
         }
+        //自定义render, 关闭的sprint放在尾端，并灰色显示
+        jlistSprints.setCellRenderer(new JiraListCellRender(new ArrayList(map.values())));
 
         scrollPaneSprint.setViewportView(jlistSprints);
         scrollPaneSprint.updateUI();
@@ -1311,7 +1317,7 @@ public class JiraCardPrinterFrame {
                     boardPanel.setBackground(Color.white);
                     boardPanel.setBorder(LineBorder.createBlackLineBorder());
                     boardPanel.setLayout(new GridBagLayout());
-                    ((GridBagLayout)boardPanel.getLayout()).columnWidths = new int[] {10, 225, 225, 439, 0};
+                    ((GridBagLayout)boardPanel.getLayout()).columnWidths = new int[] {38, 225, 225, 439, 0};
                     ((GridBagLayout)boardPanel.getLayout()).rowHeights = new int[] {53, 41, 391, 117, 0};
                     ((GridBagLayout)boardPanel.getLayout()).columnWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};
                     ((GridBagLayout)boardPanel.getLayout()).rowWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};

@@ -28,7 +28,7 @@
  * #L%
  */
 
-package cc.xiaoquer.jira.checkboxtree;
+package cc.xiaoquer.jira.uicomponents.checkboxtree;
 
 import com.alibaba.fastjson.JSON;
 import lombok.AllArgsConstructor;

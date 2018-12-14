@@ -56,9 +56,9 @@ public class Main {
         }
 
         //********************** 本地运行 **********************
-//        new JiraCardPrinterFrame().show();
+        new JiraCardPrinterFrame().show();
 //        new InstallAssistFrame().show();
-        new DailyTaskRecordFrame().show();
+//        new DailyTaskRecordFrame().show();
     }
 
     private static void runAnother(String filePath) {

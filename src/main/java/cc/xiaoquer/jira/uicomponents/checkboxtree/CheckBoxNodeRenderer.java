@@ -28,13 +28,11 @@
  * #L%
  */
 
-package cc.xiaoquer.jira.checkboxtree;
+package cc.xiaoquer.jira.uicomponents.checkboxtree;
 
 import cc.xiaoquer.jira.api.JIRA;
 import cc.xiaoquer.jira.api.beans.JiraIssue;
 import cc.xiaoquer.jira.constant.JiraSwingConsts;
-import com.alibaba.fastjson.JSON;
-import com.sun.javafx.font.FontFactory;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;

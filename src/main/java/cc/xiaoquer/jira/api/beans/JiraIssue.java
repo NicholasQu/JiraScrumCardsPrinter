@@ -689,45 +689,12 @@ public class JiraIssue extends AbstractJiraEntity {
 
         if (issuesArrayInJiraOrder != null && issuesArrayInJiraOrder.size() > 0) {
 
-            JiraIssue parentIssue = null;
             for (int i = 0; i < issuesArrayInJiraOrder.size(); i++) {
                 String issueId = String.valueOf(issuesArrayInJiraOrder.getJSONObject(i).getInteger("id"));
 
                 JiraIssue issueObj = JIRA.getIssueObjById(issueId, boardId, sprintId);
 
-                JIRA.ALL_ISSUE_MAP.put(issueObj.getIssueId(), issueObj);  //全局issue的集合Map
-
-                boolean needPutParent = false;
-                String parentId = issueObj.getParentId();
-                if (issueObj.isParent()) {
-                    parentIssue = issueObj;
-                    needPutParent = true;
-                } else if (parentIssue == null
-                        || (parentId != null && parentId.length()> 0
-                            && !parentIssue.getIssueId().equals(parentId))) {
-                    //由于Jira过滤器的存在，可能parent的团队录错了，导致api返回的第一个值是子任务，在报文中会出现 missingParents 的字段
-                    parentIssue = JIRA.getIssueObjById(parentId, boardId, sprintId);
-                    needPutParent = true;
-                }
-
-                if (needPutParent && parentIssue != null) {
-                    if (parentIssue.hasSubtask) {
-                        //树形结构里只放epic, story或者任务，等可包含子任务的节点
-                        sameOrderIssueMap.put(parentIssue.getIssueId(), parentIssue);
-                    } else {
-                        noSubTaskIssueMap.put(parentIssue.getIssueId(), parentIssue);
-                    }
-                }
-
-                if (!issueObj.isParent()) {
-                    Map<String, JiraIssue> subtaskMap = parentIssue.getSubTaskMap();
-                    if (subtaskMap == null) {
-                        subtaskMap = new LinkedHashMap<String, JiraIssue>();
-                    }
-
-                    subtaskMap.put(issueObj.getIssueId(), issueObj);
-                    parentIssue.setSubTaskMap(subtaskMap);
-                }
+                _handleMap(issueObj, boardId, sprintId, sameOrderIssueMap, noSubTaskIssueMap);
             }
         }
 
@@ -736,6 +703,73 @@ public class JiraIssue extends AbstractJiraEntity {
         return sameOrderIssueMap;
     }
 
+    private static void _handleMap(JiraIssue issueObj,
+                                  String boardId, String sprintId,
+                                  Map<String, JiraIssue> sameOrderIssueMap,
+                                  Map<String, JiraIssue> noSubTaskIssueMap) {
+        JiraIssue parentIssue = null;
+
+        boolean needPutParent = false;
+        String parentId = issueObj.getParentId();
+        if (issueObj.isParent()) {
+            parentIssue = issueObj;
+            needPutParent = true;
+        } else if (parentIssue == null
+                || (parentId != null && parentId.length()> 0
+                && !parentIssue.getIssueId().equals(parentId))) {
+            //由于Jira过滤器的存在，可能parent的团队录错了，导致api返回的第一个值是子任务，在报文中会出现 missingParents 的字段
+            parentIssue = JIRA.getIssueObjById(parentId, boardId, sprintId);
+            needPutParent = true;
+        }
+
+        if (needPutParent && parentIssue != null) {
+            if (parentIssue.hasSubtask) {
+                //树形结构里只放epic, story或者任务，等可包含子任务的节点
+                sameOrderIssueMap.put(parentIssue.getIssueId(), parentIssue);
+            } else {
+                noSubTaskIssueMap.put(parentIssue.getIssueId(), parentIssue);
+            }
+        }
+
+        if (!issueObj.isParent()) {
+            Map<String, JiraIssue> subtaskMap = parentIssue.getSubTaskMap();
+            if (subtaskMap == null) {
+                subtaskMap = new LinkedHashMap<String, JiraIssue>();
+            }
+
+            subtaskMap.put(issueObj.getIssueId(), issueObj);
+            parentIssue.setSubTaskMap(subtaskMap);
+        }
+    }
+
+    //已关闭的Sprint从缓存里面取issue
+    public static Map<String, JiraIssue> toMap4FromCache(Map<String, JiraIssue> jiraIssueMap,String boardId, String sprintId) {
+        Map<String, JiraIssue> sameOrderIssueMap = new LinkedHashMap<String, JiraIssue>();
+        Map<String, JiraIssue> noSubTaskIssueMap = new LinkedHashMap<String, JiraIssue>(); //没有子任务的issue沉到底端 在看板中是Other Issue一类
+
+        if (jiraIssueMap != null && jiraIssueMap.size() > 0) {
+            for (JiraIssue issueObj : jiraIssueMap.values()) {
+                if (issueObj.hasSubtask) {
+                    JSONArray subIssueArray = issueObj.getSubTaskJo();
+                    sameOrderIssueMap.put(issueObj.getIssueId(), issueObj);
+
+                    for (int i = 0; i < subIssueArray.size(); i++) {
+                        String subissueId = String.valueOf(subIssueArray.getJSONObject(i).getInteger("id"));
+                        JiraIssue subIssue = JIRA.getIssueObjById(subissueId, boardId, sprintId);
+
+                        Map<String, JiraIssue> subIssueMap = issueObj.getSubTaskMap();
+                        if (subIssueMap == null) subIssueMap = new LinkedHashMap<String, JiraIssue>();
+                        subIssueMap.put(subissueId, subIssue);
+                        issueObj.setSubTaskMap(subIssueMap);
+                    }
+                }
+            }
+        }
+
+        return sameOrderIssueMap;
+    }
+
+    //解析缓存用
     public static Map<String, JiraIssue> toMap(String responseBody, String boardId, String sprintId) {
         Map<String, JiraIssue> localIssueMap = new LinkedHashMap<>();
 
@@ -787,7 +821,9 @@ public class JiraIssue extends AbstractJiraEntity {
     }
 
     public boolean isDone() {
-        return "完成".equalsIgnoreCase(this.getIssueStatus());
+        return "完成".equalsIgnoreCase(this.getIssueStatus())
+                || "已关闭".equalsIgnoreCase(this.getIssueStatus())
+                || "废弃".equalsIgnoreCase(this.getIssueStatus());
     }
 
     public boolean isDoing() {

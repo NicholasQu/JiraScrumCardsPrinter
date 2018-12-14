@@ -237,13 +237,22 @@ public class JIRA {
         Map<String, JiraIssue> thisTimeIssueMap = BOARD_SPRINT_PARENT_MAP.get(key);
         if (thisTimeIssueMap == null) {
             refreshIssuesCacheInBatch(boardId, sprintId); //用分页查询的方式获取issue存入缓存，这样比by issueId查询要快
+            thisTimeIssueMap = BOARD_SPRINT_PARENT_MAP.get(key);
         }
 
-        String responseBody = getResponseRelative(GREENHOPPER_ISSUES_URL
-                .replace("{boardId}", boardId)
-                .replace("{sprintId}", sprintId));
+        JiraSprint jiraSprint = ALL_SPRINT_MAP.get(sprintId);
 
-        return JiraIssue.toMapWithKanbanOrder(responseBody, boardId, sprintId);
+        //Open Sprint 直接用jira本身界面上的issue顺序和接口来显示
+        if (jiraSprint.isActive()) {
+            String responseBody = getResponseRelative(GREENHOPPER_ISSUES_URL
+                    .replace("{boardId}", boardId)
+                    .replace("{sprintId}", sprintId));
+
+            return JiraIssue.toMapWithKanbanOrder(responseBody, boardId, sprintId);
+        } else {
+            //Close Sprint 通过将sprint内的issue刷入缓存，再组装成树结构，用于ui显示
+            return JiraIssue.toMap4FromCache(thisTimeIssueMap, boardId, sprintId);
+        }
     }
 
     public static void refreshIssuesCacheInBatch(String boardId, String sprintId) {
@@ -408,6 +417,7 @@ public class JIRA {
             String tempIssueBody = JIRA.getIssueById(issueId);
             jiraIssue = JiraIssue._parse(JSON.parseObject(tempIssueBody), boardId, sprintId);
         }
+        JIRA.ALL_ISSUE_MAP.put(jiraIssue.getIssueId(), jiraIssue);  //全局issue的集合Map
         return jiraIssue;
     }
 
