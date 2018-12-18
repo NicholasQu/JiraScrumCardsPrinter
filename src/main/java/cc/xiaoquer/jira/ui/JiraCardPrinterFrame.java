@@ -9,13 +9,16 @@ import cc.xiaoquer.jira.api.beans.JiraBoard;
 import cc.xiaoquer.jira.api.beans.JiraIssue;
 import cc.xiaoquer.jira.api.beans.JiraSprint;
 import cc.xiaoquer.jira.autoupdater.JiraAutoUpdater;
-import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeData;
-import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeEditor;
-import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeRenderer;
 import cc.xiaoquer.jira.excel.ExcelProcessor;
 import cc.xiaoquer.jira.html.HtmlGenerator;
 import cc.xiaoquer.jira.storage.PropertiesCache;
+import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeData;
+import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeEditor;
+import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeRenderer;
 import cc.xiaoquer.jira.uicomponents.jlist.JiraListCellRender;
+import com.alibaba.fastjson.JSON;
+import org.apache.commons.lang3.RandomUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.swing.*;
 import javax.swing.border.LineBorder;
@@ -31,8 +34,7 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.*;
-import java.io.File;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
@@ -45,6 +47,8 @@ public class JiraCardPrinterFrame {
         initComponents();
 
         initCompSize();
+
+        easterEggs();
     }
 
     private void initCompSize() {
@@ -1044,6 +1048,91 @@ public class JiraCardPrinterFrame {
         lblUpdate.setEnabled(true);
     }
 
+    /**
+     * --------------------------------------------------------
+     * 快捷键彩蛋
+     * --------------------------------------------------------
+     */
+    private boolean EASTER_EGG_SHOW = false;
+    private int RANDOM_EGG_INDEX = 1;
+    private void showEasterEggsDlg(String title, String body) {
+        EASTER_EGG_SHOW = true;
+        int ret = JOptionPane.showOptionDialog
+                (jiraFrame, body, title, JOptionPane.DEFAULT_OPTION, JOptionPane.PLAIN_MESSAGE, null, null, null);
+        if (JOptionPane.OK_OPTION == ret) {
+            EASTER_EGG_SHOW = false;
+        }
+    }
+
+    // 注册应用程序全局键盘事件, 所有的键盘事件都会被此事件监听器处理.
+    private void easterEggs() {
+        Toolkit toolkit = Toolkit.getDefaultToolkit();
+        toolkit.addAWTEventListener(
+                new java.awt.event.AWTEventListener() {
+                    public void eventDispatched(AWTEvent event) {
+                        if (event.getClass() == KeyEvent.class) {
+                            KeyEvent kE = ((KeyEvent) event);
+                            // https://bugs.openjdk.java.net/browse/JDK-8079801
+                            // Window.java preProcessKeyEvent() 在提示框关闭的时候，会自动sysout打印所有的子窗体...而且无法关闭
+                            // 只针对F1发生的情况，所以彩蛋不能使用F1
+                            // 处理按键事件 Ctrl+Shift+FX
+                            if ( (kE.getKeyCode() >= KeyEvent.VK_F2 && kE.getKeyCode() <= KeyEvent.VK_F12)
+                                    && !EASTER_EGG_SHOW
+                                    && (((InputEvent) event).isControlDown())
+                                    && (((InputEvent) event).isShiftDown())
+                                    && kE.getID() == KeyEvent.KEY_PRESSED) {
+
+                                showEasterEggsDlg("天使彩蛋", getGithubDoc("csf" + ((RANDOM_EGG_INDEX++) % 6) + ".md"));
+
+                            } else if ( kE.getKeyCode() == KeyEvent.VK_7
+                                    && !EASTER_EGG_SHOW
+                                    && (((InputEvent) event).isControlDown())
+                                    && (((InputEvent) event).isShiftDown())
+                                    && (((InputEvent) event).isAltDown())
+                                    && kE.getID() == KeyEvent.KEY_PRESSED) {
+                                /* Ctrl+Shift+Alt+7 */
+                                showEasterEggsDlg("77",getGithubDoc("77.md"));
+                            }
+                        }
+                    }
+                }, java.awt.AWTEvent.KEY_EVENT_MASK);
+
+    }
+    private String getGithubDoc(String fileName) {
+
+
+//        String response = JIRA.getResponse("https://api.github.com/repos/NicholasQu/JiraScrumCardsPrinter/contents/README.md", null,null, 5);
+        String response = JIRA.getResponse("https://api.github.com/repos/NicholasQu/JiraScrumCardsPrinter/contents/raw/eastereggs/" + fileName, null, null, 5);
+
+        String eggStr = "这是一颗彩蛋提示语!";
+        boolean isReal = false; //是否下載了真正的文件
+        try {
+            String base64Content = JSON.parseObject(response).getString("content");
+            base64Content = base64Content.replaceAll("\\n", "");
+
+            if (StringUtils.isNotEmpty(base64Content)) {
+                eggStr = new String(org.apache.commons.codec.binary.Base64.decodeBase64(base64Content));
+            }
+            isReal = true;
+        } catch (Exception e) {
+        }
+
+        //github有接口調用次數限制，下載不了就用jar包本地的。
+        if (!isReal) {
+            try {
+                BufferedReader in = new BufferedReader(new InputStreamReader(this.getClass().getResourceAsStream("/md/" + fileName)));
+                StringBuffer buffer = new StringBuffer();
+                String line = "";
+                while ((line = in.readLine()) != null) {
+                    buffer.append(line);
+                }
+                eggStr = buffer.toString();
+            } catch (IOException e) {
+            }
+        }
+        return eggStr;
+    }
+
     private void initComponents() {
         // JFormDesigner - Component initialization - DO NOT MODIFY  //GEN-BEGIN:initComponents
         jiraFrame = new JFrame();
@@ -1317,7 +1406,7 @@ public class JiraCardPrinterFrame {
                     boardPanel.setBackground(Color.white);
                     boardPanel.setBorder(LineBorder.createBlackLineBorder());
                     boardPanel.setLayout(new GridBagLayout());
-                    ((GridBagLayout)boardPanel.getLayout()).columnWidths = new int[] {38, 225, 225, 439, 0};
+                    ((GridBagLayout)boardPanel.getLayout()).columnWidths = new int[] {10, 225, 225, 439, 0};
                     ((GridBagLayout)boardPanel.getLayout()).rowHeights = new int[] {53, 41, 391, 117, 0};
                     ((GridBagLayout)boardPanel.getLayout()).columnWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};
                     ((GridBagLayout)boardPanel.getLayout()).rowWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};

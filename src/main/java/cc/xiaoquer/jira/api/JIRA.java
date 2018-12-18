@@ -12,10 +12,7 @@ import org.apache.commons.codec.binary.StringUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.time.DateUtils;
-import org.asynchttpclient.AsyncHttpClient;
-import org.asynchttpclient.DefaultAsyncHttpClient;
-import org.asynchttpclient.Realm;
-import org.asynchttpclient.Response;
+import org.asynchttpclient.*;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -427,14 +424,28 @@ public class JIRA {
     }
 
     public static String getResponse(String url) {
+        Map<String, String> headersMap = new HashMap<String, String>();
+        headersMap.put("Accept", "application/json");
+        headersMap.put("X-Atlassian-Token", "nocheck");
+        return getResponse(url, realm, headersMap, 5l);
+    }
+
+    public static String getResponse(String url, Realm authRealm, Map<String, String> headersMap, long timeoutSeconds) {
         System.out.println("请求数据From：" + url);
-        Future<Response> f = asyncHttpClient.prepareGet(url)
-                .setRealm(realm)
-                .addHeader("Accept", "application/json")
-                .addHeader("X-Atlassian-Token", "nocheck")
-                .execute();
+
+        BoundRequestBuilder requestBuilder = asyncHttpClient.prepareGet(url);
+
+        if (authRealm !=null ) {
+            requestBuilder.setRealm(authRealm);
+        }
+        if (headersMap != null && headersMap.size() > 0) {
+            for (Map.Entry<String, String> entry : headersMap.entrySet()) {
+                requestBuilder.addHeader(entry.getKey(), entry.getValue());
+            }
+        }
+        Future<Response> f = requestBuilder.execute();
         try {
-            Response r = f.get(5L, TimeUnit.SECONDS);
+            Response r = f.get(timeoutSeconds, TimeUnit.SECONDS);
             String s = r.getResponseBody(Charset.forName("UTF-8"));
             return s;
         } catch (Exception e) {
