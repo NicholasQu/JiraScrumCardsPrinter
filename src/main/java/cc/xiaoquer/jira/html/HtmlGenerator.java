@@ -4,13 +4,17 @@ import cc.xiaoquer.jira.api.beans.JiraIssue;
 import cc.xiaoquer.jira.constant.FoldersConsts;
 import cc.xiaoquer.jira.constant.JiraColor;
 import cc.xiaoquer.jira.storage.PropertiesCache;
+import cc.xiaoquer.jira.utils.JSCPUtils;
 import j2html.tags.ContainerTag;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static j2html.TagCreator.*;
 
@@ -42,7 +46,6 @@ public class HtmlGenerator {
     public static final String TEMPLATE_OWNER        = "<div class=\"owner_name\">{ownerName}</div>";
 
     public static String generate(String boardName, String sprintName, Set<JiraIssue> issueSet) {
-
         boardName = boardName.replaceAll(" ", "");
         sprintName = sprintName.replaceAll(" ", "");
 
@@ -118,63 +121,118 @@ public class HtmlGenerator {
     }
 
     private static ContainerTag renderSingleCard(JiraIssue jiraIssue, String boardName, String sprintName) {
-
         String card_bgcolor = JiraColor.STORY.getHex(); //Story背景色
 
         if (jiraIssue.isTask()){
             card_bgcolor = JiraColor.TASK.getHex();
-        } else if (jiraIssue.isSubTask()) {
-            card_bgcolor = JiraColor.getColorByName(jiraIssue.getOwner());
         }
 
 //        JiraBoard jiraBoard = JIRA.getBoardCache(jiraIssue.getBoardId());
 //        String boardName = (jiraBoard == null ? "" : jiraBoard.getBoardName());
 
-        String cardId = JiraColor.isColorDark(card_bgcolor) ? CSS_CARD_ID_DARK : CSS_CARD_ID_LIGHT;
+        String cardIdCss = JiraColor.isColorDark(card_bgcolor) ? CSS_CARD_ID_DARK : CSS_CARD_ID_LIGHT;
 
-        ContainerTag cardTable = table().withId(cardId).attr("bgcolor", card_bgcolor).with(
+
+        //增加血缘关系序号展示位，用于关联故事与子任务的关系
+        String bloodTemplate = "<br/><span style=\"border-radius: 50%; height: {height}; width: {width}; display: inline-block; background: {bgcolor}; vertical-align: top;\">  \n"
+                + " <span style=\"display: block; color: {fontcolor}; height: {height}; line-height: {width}; text-align: center\"> {content} </span></span>";
+
+        String bloodCycleDimension = "40px";
+        String bloodBgColor = "#e14fa6";
+        String bloodFontColor = "#FFF";
+        String bloodContent = "";
+
+        //生成卡片颜色：背景色 + 血缘小圆点色
+        String[] cardColors;
+        if (jiraIssue.isParent()) {
+            bloodContent = String.valueOf(JSCPUtils.getNumAtLast(jiraIssue.getIssueKey()));
+            cardColors = JiraColor.getCardColor(jiraIssue, jiraIssue.getOwner(), bloodContent);
+        } else {
+            bloodContent = String.valueOf(JSCPUtils.getNumAtLast(jiraIssue.getParentKey()));
+            cardColors = JiraColor.getCardColor(jiraIssue, jiraIssue.getOwner(), bloodContent);
+        }
+
+        bloodBgColor = cardColors[1];
+        bloodFontColor = JiraColor.isColorDark(bloodBgColor) ? "#FFF" : "#000";
+        if (jiraIssue.isSubTask()) {
+            card_bgcolor = cardColors[0];
+        }
+
+        //bloodFontSize，防止数字溢出小圆点
+        int bloodFontSize = 18;
+        if (bloodContent.length() == 4) {
+            bloodFontSize = 15;
+        } else if (bloodContent.length() > 4) {
+            bloodFontSize = 12;
+        }
+
+        ContainerTag bloodTD = td().attr("style", "border-top:0px none #000;font-size:" + bloodFontSize + "px;")
+                .attr("bgcolor", "#FFF")
+                .attr("rowspan", "4")
+                .attr("valign", "top")
+                .withText(
+                    bloodTemplate
+                        .replaceAll("\\{height\\}", bloodCycleDimension)
+                        .replaceAll("\\{width\\}", bloodCycleDimension)
+                        .replaceAll("\\{bgcolor\\}", bloodBgColor)
+                        .replaceAll("\\{fontcolor\\}", bloodFontColor)
+                        .replaceAll("\\{content\\}", bloodContent));
+        //BLOOD展示位构建完毕................................................
+
+        ContainerTag cardTable = table().withId(cardIdCss)
+                .attr("bgcolor", card_bgcolor)
+                .with(
                 thead(
                         tr(
-                                th().attr("scope","col").attr("width", "70%"),
+                                th().attr("scope","col").attr("width", "10%"),
+                                th().attr("scope","col").attr("width", "65%"),
                                 th().attr("scope","col").attr("width", "30%")
                         )
                 ),
                 tr(
-                        td(b(TEMPLATE_CARD_TITLE
-                                .replace("{boardName}",     boardName)
-                                .replace("{parentType}",    jiraIssue.getParentType())
-                                .replace("{parentKey}",     jiraIssue.getParentKey())
-                                .replace("{parentName}",    jiraIssue.getParentName()))
-                        )
-                        .attr("colspan","2").attr("height", PX_ONEROW_HEIGHT).attr("align", "center")
-                        .attr("style", "border-top:0px none #000;")
+                        bloodTD,
+                        td().attr("colspan","2")
+                            .attr("height", PX_ONEROW_HEIGHT)
+                            .attr("align", "center")
+                            .attr("style", "border-top:0px none #000;")
+                            .with(b(TEMPLATE_CARD_TITLE
+                                    .replace("{boardName}",     boardName)
+                                    .replace("{parentType}",    jiraIssue.getParentType())
+                                    .replace("{parentKey}",     jiraIssue.getParentKey())
+                                    .replace("{parentName}",    jiraIssue.getParentName())))
                 )
         );
 
         if (jiraIssue.isParent()) {
+
             cardTable.with(
                 tr(
-                        td(TEMPLATE_CARD_CONTENT
-                                .replace("{issueType}",     jiraIssue.getIssueType())
-                                .replace("{issueKey}",      jiraIssue.getIssueKey())
-                                .replace("{issueName}",     jiraIssue.getIssueName())
-                        )
-                        .attr("rowspan","3").attr("colspan", "2").attr("height", PX_THREEROWS_HEIGHT)
-                        .attr("align", "left").attr("valign", "middle")
+                        td().attr("rowspan","3")
+                            .attr("colspan", "2")
+                            .attr("height", PX_THREEROWS_HEIGHT)
+                            .attr("align", "left")
+                            .attr("valign", "middle")
+                            .withText(TEMPLATE_CARD_CONTENT
+                                    .replace("{issueType}",     jiraIssue.getIssueType())
+                                    .replace("{issueKey}",      jiraIssue.getIssueKey())
+                                    .replace("{issueName}",     jiraIssue.getIssueName()))
                 )
             );
         } else {
             cardTable.with(
                 tr(
-                        td(TEMPLATE_CARD_CONTENT
-                                .replace("{issueType}",     jiraIssue.getIssueType())
-                                .replace("{issueKey}",      jiraIssue.getIssueKey())
-                                .replace("{issueName}",     jiraIssue.getIssueName())
-                        )
-                        .attr("rowspan","3").attr("height", PX_THREEROWS_HEIGHT)
-                        .attr("align", "left").attr("valign", "middle"),
-
-                        td(TEMPLATE_OWNER.replace("{ownerName}",jiraIssue.getOwner())).attr("height", PX_ONEROW_HEIGHT)
+                        td().attr("rowspan","3")
+                            .attr("colspan", "1")
+                            .attr("height", PX_THREEROWS_HEIGHT)
+                            .attr("align", "left")
+                            .attr("valign", "middle")
+                            .withText(TEMPLATE_CARD_CONTENT
+                                    .replace("{issueType}",     jiraIssue.getIssueType())
+                                    .replace("{issueKey}",      jiraIssue.getIssueKey())
+                                    .replace("{issueName}",     jiraIssue.getIssueName())),
+                        td(TEMPLATE_OWNER.replace("{ownerName}",jiraIssue.getOwner()))
+                            .attr("height", PX_ONEROW_HEIGHT)
+                            .attr("width", "100px")
                 ),
                 tr(
                         td("估算:" + jiraIssue.getEstimate()).attr("rowspan", "2").attr("valign", "top")

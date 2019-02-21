@@ -31,7 +31,10 @@ public class HtmlCss {
             "    border-color: black;" +
             "    border-style: solid;" +
             "    border-width: 5px;" +
-            "    page-break-inside:avoid; " +
+            "    page-break-inside:avoid;" +
+            "    table-layout: fixed;" +
+            "    word-break: break-all;" +
+            "    \n " +
             "}  \n" +
             "#cardview thead tr  \n" +
             "{  " +
