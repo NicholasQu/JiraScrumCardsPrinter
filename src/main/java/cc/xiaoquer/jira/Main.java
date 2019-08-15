@@ -1,15 +1,15 @@
 package cc.xiaoquer.jira;
 
+import cc.xiaoquer.database.DBUtils;
 import cc.xiaoquer.jira.constant.FoldersConsts;
-import cc.xiaoquer.jira.ui.DailyTaskRecordFrame;
-import cc.xiaoquer.jira.ui.InstallAssistFrame;
+import cc.xiaoquer.jira.storage.PropertiesCache;
 import cc.xiaoquer.jira.ui.JiraCardPrinterFrame;
+import cc.xiaoquer.utils.JSCPUtils;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URISyntaxException;
 
 /**
  * Created by Nicholas on 2017/9/2.
@@ -59,6 +59,9 @@ public class Main {
         new JiraCardPrinterFrame().show();
 //        new InstallAssistFrame().show();
 //        new DailyTaskRecordFrame().show();
+
+//        DBUtils.test();
+
     }
 
     private static void runAnother(String filePath) {

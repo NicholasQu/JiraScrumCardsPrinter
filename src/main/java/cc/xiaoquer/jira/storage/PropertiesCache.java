@@ -1,8 +1,12 @@
 package cc.xiaoquer.jira.storage;
 
 import cc.xiaoquer.jira.constant.FoldersConsts;
+import cc.xiaoquer.utils.JSCPUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.*;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -21,6 +25,19 @@ public class PropertiesCache {
     public static final String P_SHOWALLCOLS        = "excelShowAllColumns";
     public static final String P_CUSTOM_FIELD_KEYS  = "excel.customfield.keys";
     public static final String P_CUSTOM_FIELD_NAMES = "excel.customfield.names";
+    public static final String P_JIRA_CUSTOM_FIELD_KEYS  = "jira.customfield.keys";
+    public static final String P_JIRA_CUSTOM_FIELD_NAMES = "jira.customfield.names";
+
+    public static final String P_ISSUE_STATUS_CATEGORY_3KEYS = "issue.status.category.3keys";
+
+
+    public static final String P_SMB_DOMAIN = "smb.domain";
+    public static final String P_SMB_USER = "smb.login.user";
+    public static final String P_SMB_PASSWORD = "smb.login.password";
+    public static final String P_SMB_LOGIN_DOMAIN = "smb.login.domain";
+    public static final String P_SMB_SHARE_ROOT = "smb.share.root";
+    public static final String P_SMB_SHARE_PATH = "smb.share.path";
+    public static final String P_WEBSERVER_URL = "webserver.url";
 
     private static final String KEY = System.getProperty("java.version");
 
@@ -41,12 +58,20 @@ public class PropertiesCache {
         configProp.put(P_SHOWALLCOLS, "0");
         configProp.put(P_CUSTOM_FIELD_KEYS, "fields>customfield_11001");
         configProp.put(P_CUSTOM_FIELD_NAMES, "实际耗费时间");
+        configProp.put(P_CUSTOM_FIELD_KEYS, "customfield_11400");
+        configProp.put(P_CUSTOM_FIELD_NAMES, "epicPriority");
         configProp.put(P_UPDATE_URL, "");
+
+        configProp.put(P_ISSUE_STATUS_CATEGORY_3KEYS, "new,indeterminate,done");
         read();
     }
 
     private static Properties read() {
         File configFile = new File(FoldersConsts.CONFIG_FILE);
+
+        if (configFile == null) {
+            return configProp;
+        }
 
         if (!configFile.exists()) {
             try {
@@ -112,10 +137,7 @@ public class PropertiesCache {
     }
 
     public static void setPassword(String value) {
-        try {
-            configProp.put(P_PWD, encryption(value));
-        } catch (UnsupportedEncodingException e) {
-        }
+        configProp.put(P_PWD, JSCPUtils.encrypt(value, KEY));
     }
 
     public static void setBoardFilter(String value) {
@@ -132,63 +154,11 @@ public class PropertiesCache {
 
     public static String getPassword() {
         String pwd = (String)configProp.get(P_PWD);
-
-        try {
-            return decipher(pwd);
-        } catch (UnsupportedEncodingException e) {
-            return "";
-        }
+        return JSCPUtils.decrypt(pwd, KEY);
     }
 
     public static String getBoardFilter() {
         return (String)configProp.get(P_BOARD_FILTER);
-    }
-
-    private static String encryption(String content) throws UnsupportedEncodingException {
-        if (content == null) {
-            return "";
-        }
-
-        byte[] contentBytes = content.getBytes();
-        byte[] keyBytes = KEY.getBytes();
-
-        byte dkey = 0;
-        for(byte b : keyBytes){
-            dkey ^= b;
-        }
-
-        byte salt = 0;  //随机盐值
-        byte[] result = new byte[contentBytes.length];
-        for(int i = 0 ; i < contentBytes.length; i++){
-            salt = (byte)(contentBytes[i] ^ dkey ^ salt);
-            result[i] = salt;
-        }
-        return new String(result, "utf-8");
-    }
-
-    private static String decipher(String content) throws UnsupportedEncodingException {
-        if (content == null) {
-            return "";
-        }
-        byte[] contentBytes = content.getBytes();
-        byte[] keyBytes = KEY.getBytes();
-
-        byte dkey = 0;
-        for(byte b : keyBytes){
-            dkey ^= b;
-        }
-
-        byte salt = 0;  //随机盐值
-        byte[] result = new byte[contentBytes.length];
-        for(int i = contentBytes.length - 1 ; i >= 0 ; i--){
-            if(i == 0){
-                salt = 0;
-            }else{
-                salt = contentBytes[i - 1];
-            }
-            result[i] = (byte)(contentBytes[i] ^ dkey ^ salt);
-        }
-        return new String(result, "utf-8");
     }
 
     public static String getProp(String key) {
@@ -209,4 +179,27 @@ public class PropertiesCache {
         configProp.put(key, value);
     }
 
+    public static Map<String, String> getJiraCustomFields() {
+        String customFieldKeyStr = (String)configProp.get(P_JIRA_CUSTOM_FIELD_KEYS);
+        String customFieldNameStr = (String)configProp.get(P_JIRA_CUSTOM_FIELD_NAMES);
+
+        if (StringUtils.isAnyBlank(customFieldKeyStr,customFieldNameStr)) {
+            return new LinkedHashMap<>();
+        }
+
+        String[] customFieldKeyArr = StringUtils.split(customFieldKeyStr,",");
+        String[] customFieldNameArr = StringUtils.split(customFieldNameStr,",");
+
+        if (customFieldKeyArr.length != customFieldNameArr.length) {
+            System.out.println("配置异常!" + P_JIRA_CUSTOM_FIELD_KEYS + "!=" + P_JIRA_CUSTOM_FIELD_NAMES);
+            return new LinkedHashMap<>();
+        }
+
+        Map<String, String> jiraCustomFieldMap = new LinkedHashMap<String, String>();
+        for (int i = 0; i<customFieldKeyArr.length; i++) {
+            jiraCustomFieldMap.put(customFieldNameArr[i], customFieldKeyArr[i]);
+        }
+
+        return jiraCustomFieldMap;
+    }
 }

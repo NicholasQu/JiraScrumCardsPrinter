@@ -19,9 +19,14 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class JiraProject extends AbstractJiraEntity {
-    private String projectId;
-    private String projectKey;
-    private String projectName;
+    private String projectId = "";
+    private String projectKey = "";
+    private String projectName = "";
+
+    public JiraProject(String projectId) {
+        this.projectId = projectId;
+    }
+
     //    {
 //            "maxResults":50,
 //            "startAt":0,
@@ -63,6 +68,17 @@ public class JiraProject extends AbstractJiraEntity {
         }
 
         return projectsMap;
+    }
+
+    public void setJSONObject(JSONObject jsonObject) {
+        String id = jsonObject.getString("id");
+        if (this.projectId != null && this.projectId.equals(id)) {
+            throw new RuntimeException("已有ID "+this.projectId+ " 与 " + id + " 不一致");
+        }
+
+        this.setProjectId(id);
+        this.setProjectKey(jsonObject.getString("key"));
+        this.setProjectName(jsonObject.getString("name"));
     }
 
 }

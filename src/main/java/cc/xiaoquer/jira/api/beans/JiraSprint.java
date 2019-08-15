@@ -25,9 +25,14 @@ public class JiraSprint extends AbstractJiraEntity {
     private String sprintName;
     private String startDate;
     private String endDate;
+    private String completeDate;
     private String state; //closed, active
 
-//    {
+    public JiraSprint(String sprintId) {
+        this.sprintId = sprintId;
+    }
+
+    //    {
 //        "maxResults":50,
 //            "startAt":0,
 //            "isLast":true,
@@ -104,6 +109,20 @@ public class JiraSprint extends AbstractJiraEntity {
 
     public boolean isActive() {
         return "active".equalsIgnoreCase(this.getState());
+    }
+
+    public void setJSONObject(JSONObject sprintJo) {
+        String id = sprintJo.getString("id");
+        if (this.sprintId != null && this.sprintId.equals(id)) {
+            throw new RuntimeException("已有ID "+this.sprintId+ " 与 " + id + " 不一致");
+        }
+
+        this.setSprintId(id);
+        this.setSprintName(sprintJo.getString("name"));
+        this.setState(sprintJo.getString("state"));
+        this.setStartDate(sprintJo.getString("startDate"));
+        this.setEndDate(sprintJo.getString("endDate"));
+        this.setCompleteDate(sprintJo.getString("completeDate"));
     }
 
 }

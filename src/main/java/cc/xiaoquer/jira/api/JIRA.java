@@ -1,26 +1,17 @@
 package cc.xiaoquer.jira.api;
 
-import cc.xiaoquer.jira.api.beans.JiraBoard;
-import cc.xiaoquer.jira.api.beans.JiraIssue;
-import cc.xiaoquer.jira.api.beans.JiraProject;
-import cc.xiaoquer.jira.api.beans.JiraSprint;
+import cc.xiaoquer.jira.api.beans.*;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONException;
-import com.alibaba.fastjson.JSONObject;
-import org.apache.commons.codec.binary.StringUtils;
-import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.RandomUtils;
-import org.apache.commons.lang3.time.DateUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.asynchttpclient.*;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -38,16 +29,25 @@ public class JIRA {
     public static final String AGILE_BOARDS_URL  = "/rest/agile/1.0/board?type=scrum&startAt={start}&maxResults=50";
     public static final String AGILE_BOARD_PROJECT_URL = "/rest/agile/1.0/board/{boardId}/project?startAt=0&maxResults=50";
     public static final String AGILE_SPRINTS_URL = "/rest/agile/1.0/board/{boardId}/sprint?startAt={start}&maxResults=50";
+    public static final String AGILE_EPICS_URL = "/rest/agile/1.0/board/{boardId}/epic?startAt={start}&maxResults={max}";
+    public static final String AGILE_ISSUES_IN_EPIC_URL = "/rest/agile/1.0/board/{boardId}/epic/{epicId}/issue?startAt={start}&maxResults={max}";
+    public static final String AGILE_BACKLOG_IN_BOARD_URL = "/rest/agile/1.0/board/{boardId}/backlog?startAt={start}&maxResults={max}";
+
     public static final String AGILE_ISSUES_URL  = "/rest/agile/1.0/board/{boardId}/sprint/{sprintId}/issue?startAt={start}&maxResults={max}";
     public static final String GREENHOPPER_ISSUES_URL  = "/rest/greenhopper/1.0/xboard/work/allData.json?rapidViewId={boardId}&activeSprints={sprintId}";
     public static final String AGILE_ISSUE_URL   = "/rest/agile/1.0/issue/{issueId}";
     public static final String BROWSE_ISSUE_URL   = "/browse/{issueKey}";
+    public static final String BROWSE_BOARD_URL = "/secure/RapidBoard.jspa?projectKey={projectKey}&view=planning.nodetail";
+    public static final String BROWSE_SPRINT_URL = "/secure/RapidBoard.jspa?projectKey={projectKey}&view=planning";
+
+    //http://jira.xiaoquer.cc/rest/greenhopper/1.0/xboard/plan/backlog/data.json?rapidViewId=232&selectedProjectKey=CPC
+    public static final String GREENHOPPER_BACKLOG_URL = "";
 
     //https://confluence.atlassian.com/jiracoreserver073/advanced-searching-861257209.html#Advancedsearching-reference
     //https://developer.atlassian.com/static/rest/jira/6.1.html#d2e4071
     //*all,-comment,-watches表示查询所有属性除了comment waches
     //如此搜索用于缓存数据，不用一条一条的查询issue了
-    public static final String SEARCH_JQL_BY_PROJECT_URL   = "/rest/api/2/search?startAt={start}&maxResults=50&fields=*all%2c-comment%2c-watches&jql={jql}";
+    public static final String SEARCH_BY_JQL_URL = "/rest/api/2/search?startAt={start}&maxResults=50&fields=*all%2c-comment%2c-watches&jql={jql}";
 
     //http://jira/rest/greenhopper/1.0/xboard/plan/backlog/data.json?rapidViewId=97
     public static final String GREENHOPPER_KANBAN = "/rest/greenhopper/1.0/xboard/plan/backlog/data.json?rapidViewId={boardId}";
@@ -83,6 +83,19 @@ public class JIRA {
      * Key=IssueId
      */
     public static Map<String, JiraIssue> ALL_ISSUE_MAP = new TreeMap<>();
+
+    /**
+     * Key=EpicId
+     */
+    public static final Map<String, JiraEpic> ALL_EPIC_MAP = new LinkedHashMap<>();
+    /**
+     * Key1=BoardId
+     * Key2=EpicId
+     */
+    public static final Map<String, Map<String, JiraEpic>> BOARD_EPICS_MAP = new LinkedHashMap<>();
+
+    //Key=EpicId
+    public static Map<String, Map<String, JiraIssue>> EPIC_ISSUES_MAP = new LinkedHashMap<>();
 
 //    private static Map<String, JiraSprint> sprintMap;
 //    private static Vector<String> sprintNames;
@@ -160,6 +173,9 @@ public class JIRA {
         ALL_ISSUE_MAP.clear();
         BOARD_SPRINT_MAP.clear();
         BOARD_SPRINT_PARENT_MAP.clear();
+        ALL_EPIC_MAP.clear();
+        BOARD_EPICS_MAP.clear();
+        EPIC_ISSUES_MAP.clear();
     }
 
     public static Map<String, JiraBoard> getBoardMap(boolean forceRefresh) {
@@ -209,6 +225,51 @@ public class JIRA {
     public static JiraSprint getSprintCache(String sprintId) {
         return ALL_SPRINT_MAP.get(sprintId);
     }
+
+    public static Map<String, JiraIssue> getBacklog(String boardId) {
+        int issuePageSize = PAGE_SIZE;
+        int total = 0;
+
+        String sprintId = "";
+        String url = serverUrl + AGILE_BACKLOG_IN_BOARD_URL
+                .replace("{boardId}", boardId);
+
+        boolean isEnd = false;
+        while ( !isEnd ) {
+            Pair<String, Boolean> responsePair = _getPaginationResponse(url, 0, issuePageSize);
+
+            String responseBody = responsePair.getLeft();
+            isEnd = responsePair.getRight();
+
+            JiraIssue.toMap(responseBody, boardId, sprintId);
+        }
+
+        //把子任务解析到story或者任务的类属性里
+        parseSubTasks(boardId, sprintId);
+
+        return getStoryOrTaskMap(boardId, sprintId);
+    }
+
+    //Key=Response String
+    //Value=end or not
+    private static Pair<String, Boolean> _getPaginationResponse(String url, int start, int max) {
+        String responseBody = getResponse(url
+                .replace("{start}", String.valueOf(start))
+                .replace("{max}", String.valueOf(max)));
+
+        int total = 0;
+        try {
+            total = JSON.parseObject(responseBody).getInteger("total");
+        } catch (Exception e) {
+            System.out.println("获取总记录数失败！！！");
+            e.printStackTrace();
+        }
+
+        boolean isEnd = false;
+        if (start + max >= total) isEnd = true;
+        return new ImmutablePair<>(responseBody, isEnd);
+    }
+
 
     public static Map<String, JiraIssue> getIssueMap(String boardId, String sprintId) {
 
@@ -283,7 +344,7 @@ public class JIRA {
 
         int total = Integer.MAX_VALUE;
         for (int i = 0; i <= total; i = i + PAGE_SIZE) {
-            String responseBody = getResponseRelative(SEARCH_JQL_BY_PROJECT_URL
+            String responseBody = getResponseRelative(SEARCH_BY_JQL_URL
                     .replace("{jql}", encodedJQL).replace("{start}", String.valueOf(i)));
 
             //将issue解析进入缓存
@@ -304,7 +365,7 @@ public class JIRA {
 
         int total = Integer.MAX_VALUE;
         for (int i = 0; i <= total; i = i + PAGE_SIZE) {
-            String responseBody = getResponseRelative(SEARCH_JQL_BY_PROJECT_URL
+            String responseBody = getResponseRelative(SEARCH_BY_JQL_URL
                     .replace("{jql}", encodedJQL).replace("{start}", String.valueOf(i)));
 
             total = JSON.parseObject(responseBody).getInteger("total");
@@ -497,6 +558,18 @@ public class JIRA {
 //        JIRA.connect("http://99.48.46.160:8080/", "nicholas.qu", "*****");
 //        System.out.println(JIRA.getSprintMap("97"));
 //        JIRA.disconnect();
+
+//      Jira Rest Java API
+//        final JerseyJiraRestClientFactory factory = new JerseyJiraRestClientFactory();
+//        final URI jiraServerUri = new URI("http://localhost:8090/jira");
+//        final JiraRestClient restClient = factory.createWithBasicHttpAuthentication(jiraServerUri, "yourusername", "yourpassword");
+//        final NullProgressMonitor pm = new NullProgressMonitor();
+//        final Issue issue = restClient.getIssueClient().getIssue("TST-1", pm);
+//
+//        System.out.println(issue);
+//
+//        // now let's vote for it
+//        restClient.getIssueClient().vote(issue.getVotesUri(), pm);
 
     }
 }

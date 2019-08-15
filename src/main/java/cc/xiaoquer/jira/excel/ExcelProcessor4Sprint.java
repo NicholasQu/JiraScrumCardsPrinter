@@ -1,7 +1,9 @@
 package cc.xiaoquer.jira.excel;
 
 import cc.xiaoquer.jira.api.JIRA;
+import cc.xiaoquer.jira.api.beans.JiraBoard;
 import cc.xiaoquer.jira.api.beans.JiraIssue;
+import cc.xiaoquer.jira.api.beans.JiraSprint;
 import cc.xiaoquer.jira.constant.FoldersConsts;
 import cc.xiaoquer.jira.storage.PropertiesCache;
 import org.apache.commons.lang3.StringUtils;
@@ -22,7 +24,7 @@ import java.util.*;
  * Created by Nicholas on 2017/9/20.
  *
  */
-public class ExcelProcessor {
+public class ExcelProcessor4Sprint {
 
     public static final String EXCEL_FILE = FoldersConsts.OUTPUT_FOLDER + "/Export-{boardName}-{sprintName}-{date}.xls";
     public static final int    PADDING_LEN    = 10;
@@ -34,15 +36,14 @@ public class ExcelProcessor {
      * 创建时间,更新时间,截止时间
      * Browse
      */
-    public static short[] COL_WIDTH_PIXEL = new short[] {
-            0,      0,      150,    50,     50,     100,
+    public static short[] SPRINT_COL_WIDTH_PIXEL = new short[] {
+            0,      0,      50,    50,     50,     100,
             300,    80,     120,    120,    120,    0,    0,
             0,      0,      120,      0,
-            0,      0,      0,
-            100
+            0,      0,      0
     };
 
-    public static final int COL_INIT_NUM = COL_WIDTH_PIXEL.length;
+    public static final int COL_INIT_NUM = SPRINT_COL_WIDTH_PIXEL.length;
 
     public static int COL_ADD_NUM  = 0;          //自定义字段的数量
     public static String[] CUSTOM_KEY_ARR;
@@ -51,22 +52,33 @@ public class ExcelProcessor {
     public static boolean CUSTOM_FIELDS_ADDED = false;   //是否已经添加了自定义的列
 
     //显示所有列 对应环境变量 excelShowAllColumns
-    public static short[] COL_WIDTH_PIXEL_ALL = new short[] {
-            0,      0,      150,    50,     50,    100,
+    public static short[] SPRINT_COL_WIDTH_PIXEL_ALL = new short[] {
+            0,      0,      50,    50,     50,    100,
             300,    80,     120,    120,    120,    100,    100,
             100,    100,    100,    100,
-            200,    100,    100,
-            100
+            200,    100,    100
     };
 
-    public static String[] COL_NAME_ARR = new String[] {
+    public static String[] SPRINT_COL_NAME_ARR = new String[] {
             "Id",        "hiddenKeys",   "团队",  "T",   "类型",  "Key",
             "主题",       "状态",       "经办人",   "预估时间(H)",   "剩余时间(H)",  "预估时间",  "剩余时间",
             "项目Key",    "项目名称",    "优先级",    "描述",
-            "创建时间",    "更新时间",    "截止时间",
-            "Browse"
+            "创建时间",    "更新时间",    "截止时间"
     };
 
+    public static short[] BACKLOG_COL_WIDTH_PIXEL = new short[] {
+            0,      0,      50,     50,     50,    60,
+            60,     300,    60,     300,
+            100,    100,
+            300
+    };
+
+    public static String[] BACKLOG_COL_NAME_ARR = new String[] {
+            "Id",        "hiddenKeys",   "看板", "T",   "类型",  "Key",
+            "优先级",    "主题",       "状态",       "描述",
+            "创建时间",    "更新时间",
+            "备注"
+    };
 
     private static final DecimalFormat DF = new DecimalFormat("#.#");
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -85,6 +97,8 @@ public class ExcelProcessor {
     public static int COL_IDX_OWNER         = 8;    //经办人列号
     public static int COL_IDX_EST_HOUR      = 9;    //估算时间(小时)列号
     public static int COL_IDX_LEFT_HOUR     = 10;    //剩余时间(小时)列号
+    public static int COL_IDX_DESC          = 0;     //描述
+    public static int COL_IDX_COMMENTS      = 0;     //备注
 
     public static final List<Integer> TEAM_GROUP_START_ROW = new ArrayList<>();
     public static final List<Integer> STORY_GROUP_START_ROW = new ArrayList<>();
@@ -93,32 +107,70 @@ public class ExcelProcessor {
     public static double TOTAL_REMAIN   = 0;
 
 
-    public static String write(String boardName, String sprintName, Map<String, JiraIssue> jiraIssueMap) {
-        if (jiraIssueMap == null || jiraIssueMap.size() == 0)  return null;
+    public static String write(String boardId, String sprintId) {
+        if (StringUtils.isBlank(boardId))  return null;
 
+        JiraBoard jiraBoard = JIRA.getBoardCache(boardId);
+        String boardName = jiraBoard.getBoardName();
+
+        String sprintName = "";
+
+        //1 创建一个workbook对应一个excel文件
+        HSSFWorkbook workbook = new HSSFWorkbook();
+
+        if (StringUtils.isNotBlank(sprintId)) {
+            JiraSprint jiraSprint = JIRA.getSprintCache(sprintId);
+
+            sprintName = jiraSprint.getSprintName();
+
+            Map<String, JiraIssue> issuesInSprintMap = JIRA.getIssueMapWithSameOrder(boardId, sprintId);
+            createSprintSheet(workbook, boardName, sprintName, issuesInSprintMap);
+        }
+
+        Map<String, JiraIssue> backlogMap = JIRA.getBacklog(boardId);
+        createBacklogSheet(workbook, boardName, backlogMap);
+        File saveFile = new File(EXCEL_FILE.replace("{boardName}", boardName)
+                .replace("{sprintName}", sprintName)
+                .replace("{date}", System.currentTimeMillis() + ""));
+
+        //将文件保存到指定的位置
+        try {
+            FileOutputStream fos = new FileOutputStream(saveFile);
+            workbook.write(fos);
+            System.out.println("Export Succ!" + saveFile.getAbsolutePath());
+            fos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return saveFile.getAbsolutePath();
+    }
+
+    private static void _clearData() {
         STORY_GROUP_START_ROW.clear();
         TEAM_GROUP_START_ROW.clear();
         PEOPLE.clear();
         TOTAL_ESTIMATE = 0;
         TOTAL_REMAIN = 0;
+    }
+
+    private static void createSprintSheet(HSSFWorkbook workbook, String boardName, String sprintName, Map<String, JiraIssue> issuesInSprintMap) {
+        _clearData();
 
         //将TeamId， 保持issue原序号 拼装为等长字符，实现分组和父子排序
-        Map<String, JiraIssue> excelJiraIssue = new TreeMap<String, JiraIssue>();
+        Map<String, JiraIssue> excelSprintIssue = new TreeMap<String, JiraIssue>();
 
         int seq = 0;
-        for (JiraIssue issue : jiraIssueMap.values()) {
+        for (JiraIssue issue : issuesInSprintMap.values()) {
             seq++;
             // 以防所有的没有子任务的issue都沉到底部，导致team无法分组，仍旧以team分组，
             // 然后再把no subtask的故事或者任务沉到团队内的底部
-            excelJiraIssue.put(key4Sort(issue, seq), issue);
+            excelSprintIssue.put(key4Sort(issue, seq), issue);
         }
 
         int rowIdx = 0;
-        //1 创建一个workbook对应一个excel文件
-        HSSFWorkbook workbook = new HSSFWorkbook();
-
         //2 在workbook中创建一个sheet对应excel中的sheet
-        HSSFSheet sheet = workbook.createSheet("Jira");
+        HSSFSheet sheet = workbook.createSheet("Sprint");
 
         //3 标题
         HSSFRow titleRow = sheet.createRow(rowIdx++); ROW_IDX_TITLE = rowIdx - 1;
@@ -147,14 +199,14 @@ public class ExcelProcessor {
                     COL_ADD_NUM = CUSTOM_KEY_ARR.length;
                 }
 
-                COL_WIDTH_PIXEL     = Arrays.copyOf(COL_WIDTH_PIXEL,      COL_INIT_NUM + COL_ADD_NUM);
-                COL_WIDTH_PIXEL_ALL = Arrays.copyOf(COL_WIDTH_PIXEL_ALL,  COL_INIT_NUM + COL_ADD_NUM);
-                COL_NAME_ARR        = Arrays.copyOf(COL_NAME_ARR,         COL_INIT_NUM + COL_ADD_NUM);
+                SPRINT_COL_WIDTH_PIXEL = Arrays.copyOf(SPRINT_COL_WIDTH_PIXEL,      COL_INIT_NUM + COL_ADD_NUM);
+                SPRINT_COL_WIDTH_PIXEL_ALL = Arrays.copyOf(SPRINT_COL_WIDTH_PIXEL_ALL,  COL_INIT_NUM + COL_ADD_NUM);
+                SPRINT_COL_NAME_ARR = Arrays.copyOf(SPRINT_COL_NAME_ARR,         COL_INIT_NUM + COL_ADD_NUM);
 
                 for (int i = 0; i < COL_ADD_NUM; i++) {
-                    COL_WIDTH_PIXEL[COL_INIT_NUM + i] = 100;
-                    COL_WIDTH_PIXEL_ALL[COL_INIT_NUM + i] = 100;
-                    COL_NAME_ARR[COL_INIT_NUM + i] =  CUSTOM_NAME_ARR[i];
+                    SPRINT_COL_WIDTH_PIXEL[COL_INIT_NUM + i] = 100;
+                    SPRINT_COL_WIDTH_PIXEL_ALL[COL_INIT_NUM + i] = 100;
+                    SPRINT_COL_NAME_ARR[COL_INIT_NUM + i] =  CUSTOM_NAME_ARR[i];
                 }
             }
 
@@ -162,13 +214,13 @@ public class ExcelProcessor {
         }
 
         //创建单元格，设置表头
-        for (int columnIdx = 0; columnIdx < COL_WIDTH_PIXEL.length; columnIdx++) {
-            headerRow.createCell(columnIdx).setCellValue(COL_NAME_ARR[columnIdx]);
+        for (int columnIdx = 0; columnIdx < SPRINT_COL_WIDTH_PIXEL.length; columnIdx++) {
+            headerRow.createCell(columnIdx).setCellValue(SPRINT_COL_NAME_ARR[columnIdx]);
         }
 
         //5 汇总行
         HSSFRow sumRow = sheet.createRow(rowIdx++); ROW_IDX_SUM = rowIdx - 1;
-        for (int colIdx = 0; colIdx < COL_WIDTH_PIXEL.length; colIdx++) {
+        for (int colIdx = 0; colIdx < SPRINT_COL_WIDTH_PIXEL.length; colIdx++) {
             sumRow.createCell(colIdx).setCellValue("");
         }
         //如果自定义字段都是数值，那自动给一个合计值在汇总行
@@ -177,7 +229,8 @@ public class ExcelProcessor {
         //写入实体数据，实际应用中这些数据从数据库得到,对象封装数据，集合包对象。对象的属性值对应表的每行的值
         String previousTeam = null;
         HSSFRow dataRow = null;
-        for (Map.Entry<String, JiraIssue> entry : excelJiraIssue.entrySet()) {
+        ROW_IDX_DATA = rowIdx;
+        for (Map.Entry<String, JiraIssue> entry : excelSprintIssue.entrySet()) {
             //每个故事/任务就是一个分组的开始行
             STORY_GROUP_START_ROW.add(rowIdx);
 
@@ -195,18 +248,18 @@ public class ExcelProcessor {
             }
 
             dataRow = sheet.createRow(rowIdx++);
-            createColumns(dataRow, hiddenKey, issue, currentTeam);
+            createSprintColumns(dataRow, hiddenKey, issue, currentTeam);
 
             Map<String, JiraIssue> subTaskMap = issue.getSubTaskMap();
             if (subTaskMap != null && subTaskMap.size() > 0) {
                 for (JiraIssue subTask : subTaskMap.values()) {
                     HSSFRow subRow = sheet.createRow(rowIdx++);
-                    createColumns(subRow, hiddenKey, subTask, currentTeam);
+                    createSprintColumns(subRow, hiddenKey, subTask, currentTeam);
                 }
             }
         }
 
-        renderExcel(workbook, sheet, rowIdx - 1, COL_WIDTH_PIXEL.length - 1);
+        renderExcel("Sprint", workbook, sheet, rowIdx - 1, SPRINT_COL_WIDTH_PIXEL.length - 1);
 
         //写入汇总数据
         sumRow.getCell(COL_IDX_OWNER).setCellValue("总人力: " + PEOPLE.size());
@@ -222,33 +275,117 @@ public class ExcelProcessor {
         //分组的加减号放到上方
         sheet.setRowSumsBelow(false);
         sheet.setRowSumsRight(false);
-
-        File saveFile = new File(EXCEL_FILE.replace("{boardName}", boardName)
-                .replace("{sprintName}", sprintName)
-                .replace("{date}", System.currentTimeMillis() + ""));
-
-        //将文件保存到指定的位置
-        try {
-            FileOutputStream fos = new FileOutputStream(saveFile);
-            workbook.write(fos);
-            System.out.println("Export Succ!" + saveFile.getAbsolutePath());
-            fos.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return saveFile.getAbsolutePath();
     }
 
-    private static void createColumns(HSSFRow row, String hiddenKey, JiraIssue issue, String currentTeam) {
+    private static void createBacklogSheet(HSSFWorkbook workbook, String boardName, Map<String, JiraIssue> backlogMap) {
+        _clearData();
+
+        //将TeamId， 保持issue原序号 拼装为等长字符，实现分组和父子排序
+        Map<String, JiraIssue> excelBacklog = new TreeMap<String, JiraIssue>();
+
+        for (JiraIssue issue : backlogMap.values()) {
+            // 优先级高的靠前，进行中的靠前
+            excelBacklog.put(issue.getSortedKey(), issue);
+        }
+
+        int rowIdx = 0;
+        //2 在workbook中创建一个sheet对应excel中的sheet
+        HSSFSheet sheet = workbook.createSheet("Backlog");
+
+        //3 标题
+        HSSFRow titleRow = sheet.createRow(rowIdx++); ROW_IDX_TITLE = rowIdx - 1;
+        titleRow.createCell(0).setCellValue(boardName + " Backlog");
+        //子标题
+        HSSFRow subtitleRow = sheet.createRow(rowIdx++); ROW_IDX_SUBTITLE = rowIdx - 1;
+        subtitleRow.createCell(0).setCellValue(DATE_FORMAT.format(new Date()));
+
+        //4 在sheet表中添加表头，老版本的poi对sheet的行列有限制
+        HSSFRow headerRow = sheet.createRow(rowIdx++);  ROW_IDX_HEADER = rowIdx - 1;
+
+        //创建单元格，设置表头
+        for (int columnIdx = 0; columnIdx < BACKLOG_COL_WIDTH_PIXEL.length; columnIdx++) {
+            headerRow.createCell(columnIdx).setCellValue(BACKLOG_COL_NAME_ARR[columnIdx]);
+        }
+
+        //5 汇总行
+        HSSFRow sumRow = sheet.createRow(rowIdx++); ROW_IDX_SUM = rowIdx - 1;
+        for (int colIdx = 0; colIdx < BACKLOG_COL_WIDTH_PIXEL.length; colIdx++) {
+            sumRow.createCell(colIdx).setCellValue("");
+        }
+
+        //如果自定义字段都是数值，那自动给一个合计值在汇总行
+        CUSTOM_RECORDS_SUM = new Double[COL_ADD_NUM];
+
+        //写入实体数据，实际应用中这些数据从数据库得到,对象封装数据，集合包对象。对象的属性值对应表的每行的值
+        HSSFRow dataRow = null;
+        ROW_IDX_DATA = rowIdx;
+        TEAM_GROUP_START_ROW.add(rowIdx);
+        for (Map.Entry<String, JiraIssue> entry : excelBacklog.entrySet()) {
+            //每个故事/任务就是一个分组的开始行
+            STORY_GROUP_START_ROW.add(rowIdx);
+
+            String hiddenKey = entry.getKey();
+            JiraIssue issue = entry.getValue();
+
+            dataRow = sheet.createRow(rowIdx++);
+            createBacklogColumns(dataRow, hiddenKey, issue);
+
+            if (issue.isHasSubtask()) {
+                Map<String, JiraIssue> subTaskMap = issue.getSortedSubTaskMap();
+
+                for (JiraIssue subTask : subTaskMap.values()) {
+                    HSSFRow subRow = sheet.createRow(rowIdx++);
+                    createBacklogColumns(subRow, hiddenKey, subTask);
+                }
+            }
+        }
+
+        renderExcel("backlog", workbook, sheet, rowIdx - 1, SPRINT_COL_WIDTH_PIXEL.length - 1);
+
+        //分组的加减号放到上方
+        sheet.setRowSumsBelow(false);
+        sheet.setRowSumsRight(false);
+    }
+
+    private static void createBacklogColumns(HSSFRow row, String hiddenKey, JiraIssue issue) {
+        int columnIdx = 0;
+        row.createCell(columnIdx++).setCellValue(issue.getIssueId());   COL_IDX_ID = columnIdx - 1;
+        row.createCell(columnIdx++).setCellValue(hiddenKey);
+        row.createCell(columnIdx++).setCellValue(JIRA.getBoardCache(issue.getBoardId()).getBoardName()); COL_IDX_TEAM = columnIdx - 1;
+        row.createCell(columnIdx++).setCellValue(renderIssueTypeInTree(issue));
+        row.createCell(columnIdx++).setCellValue(issue.getIssueType()); COL_IDX_TYPE = columnIdx - 1;
+        Cell linkCell = row.createCell(columnIdx++);
+        CreationHelper createHelper = row.getSheet().getWorkbook().getCreationHelper();
+        Hyperlink link = createHelper.createHyperlink(HyperlinkType.URL);
+        link.setAddress(JIRA.serverUrl + JIRA.BROWSE_ISSUE_URL.replace("{issueKey}", issue.getIssueKey()));
+        linkCell.setCellValue(issue.getIssueKey());                     COL_IDX_KEY = columnIdx - 1;
+        linkCell.setHyperlink(link);
+
+        row.createCell(columnIdx++).setCellValue(issue.getPriority());
+        row.createCell(columnIdx++).setCellValue(issue.getIssueName());
+        row.createCell(columnIdx++).setCellValue(issue.getIssueStatus());   COL_IDX_STATUS = columnIdx - 1;
+        row.createCell(columnIdx++).setCellValue(issue.getDescription());   COL_IDX_DESC = columnIdx - 1;
+        row.createCell(columnIdx++).setCellValue(issue.getCreatedAt());
+        row.createCell(columnIdx++).setCellValue(issue.getUpdatedAt());
+        row.createCell(columnIdx++).setCellValue(issue.getComments());      COL_IDX_COMMENTS = columnIdx - 1;
+    }
+
+    private static void createSprintColumns(HSSFRow row, String hiddenKey, JiraIssue issue, String currentTeam) {
         //创建单元格设值
         int columnIdx = 0;
-        row.createCell(columnIdx++).setCellValue(issue.getIssueId());
+        row.createCell(columnIdx++).setCellValue(issue.getIssueId());   COL_IDX_ID = columnIdx - 1;
         row.createCell(columnIdx++).setCellValue(hiddenKey);
-        row.createCell(columnIdx++).setCellValue(currentTeam);
+        row.createCell(columnIdx++).setCellValue(currentTeam);          COL_IDX_TEAM = columnIdx - 1;
         row.createCell(columnIdx++).setCellValue(renderIssueTypeInTree(issue));
-        row.createCell(columnIdx++).setCellValue(issue.getIssueType());
-        row.createCell(columnIdx++).setCellValue(issue.getIssueKey());
+        row.createCell(columnIdx++).setCellValue(issue.getIssueType()); COL_IDX_TYPE = columnIdx - 1;
+
+        Cell linkCell = row.createCell(columnIdx++);
+        CreationHelper createHelper = row.getSheet().getWorkbook().getCreationHelper();
+        Hyperlink link = createHelper.createHyperlink(HyperlinkType.URL);
+        link.setAddress(JIRA.serverUrl + JIRA.BROWSE_ISSUE_URL.replace("{issueKey}", issue.getIssueKey()));
+        linkCell.setCellValue(issue.getIssueKey());                     COL_IDX_KEY = columnIdx - 1;
+        linkCell.setHyperlink(link);
+
         row.createCell(columnIdx++).setCellValue(issue.getIssueName());
         row.createCell(columnIdx++).setCellValue(issue.getIssueStatus());
 
@@ -290,8 +427,8 @@ public class ExcelProcessor {
                 }
             }
 
-            row.createCell(columnIdx++).setCellValue(estInHour);
-            row.createCell(columnIdx++).setCellValue(remainInHour);
+            row.createCell(columnIdx++).setCellValue(estInHour);    COL_IDX_EST_HOUR = columnIdx - 1;
+            row.createCell(columnIdx++).setCellValue(remainInHour); COL_IDX_LEFT_HOUR = columnIdx - 1;
 
             row.createCell(columnIdx++).setCellValue(est);
             row.createCell(columnIdx++).setCellValue(remain);
@@ -303,20 +440,13 @@ public class ExcelProcessor {
             row.createCell(columnIdx++).setCellValue("");
         }
 
-        row.createCell(columnIdx++).setCellValue(issue.getProjectKey());
-        row.createCell(columnIdx++).setCellValue(issue.getProjectName());
+        row.createCell(columnIdx++).setCellValue(issue.getJiraProject().getProjectKey());
+        row.createCell(columnIdx++).setCellValue(issue.getJiraProject().getProjectName());
         row.createCell(columnIdx++).setCellValue(issue.getPriority());
-        row.createCell(columnIdx++).setCellValue(issue.getDescription());
+        row.createCell(columnIdx++).setCellValue(issue.getDescription()); COL_IDX_DESC = columnIdx - 1;
         row.createCell(columnIdx++).setCellValue(issue.getCreatedAt());
         row.createCell(columnIdx++).setCellValue(issue.getUpdatedAt());
         row.createCell(columnIdx++).setCellValue(issue.getDueDate());
-
-        Cell linkCell = row.createCell(columnIdx++);
-        CreationHelper createHelper = row.getSheet().getWorkbook().getCreationHelper();
-        Hyperlink link = createHelper.createHyperlink(HyperlinkType.URL);
-        link.setAddress(JIRA.serverUrl + JIRA.BROWSE_ISSUE_URL.replace("{issueKey}", issue.getIssueKey()));
-        linkCell.setCellValue("Issue Detail");
-        linkCell.setHyperlink(link);
 
         for (int i = 0; i < COL_ADD_NUM; i++) {
             String customValue = issue.getCustomFields().get(CUSTOM_KEY_ARR[i]);
@@ -337,14 +467,56 @@ public class ExcelProcessor {
             return Double.MAX_VALUE;
         }
     }
+
+    //判断一行内某些单元格的内容自动换行后是否过高
+    private static void setHighRowToDefault(HSSFRow row, short maxHeight, int... colsIdx) {
+        boolean isRowHigh = false;
+        for (int colIdx : colsIdx) {
+            HSSFCell cell = row.getCell(colIdx);
+            String cellValue = (cell == null ? "" : cell.getStringCellValue());
+            int lines = _getCellLines(cellValue);
+            int totalChars = StringUtils.length(cellValue);
+            //默认就有4个换行，或者4个每行有25个字符
+            if (lines >= 4 || totalChars > 25 * 4) {
+                isRowHigh = true;
+                break;
+            }
+        }
+
+        if (isRowHigh) row.setHeightInPoints(maxHeight);
+    }
+
+    private static int _getCellLines(String str) {
+        try {
+            return str.split("\r\n").length;
+        } catch (Exception e) {
+        }
+        return 0;
+    }
+
     //渲染excel
-    private static void renderExcel(HSSFWorkbook workbook, HSSFSheet sheet, int rowCount, int colCount) {
+    private static void renderExcel(String type, HSSFWorkbook workbook, HSSFSheet sheet, int rowCount, int colCount) {
+        boolean isBacklogSheet = StringUtils.equalsIgnoreCase("backlog", type);
+
+
+        short[] col_width_pixel = SPRINT_COL_WIDTH_PIXEL;
+        short[] col_width_pixel_all = SPRINT_COL_WIDTH_PIXEL_ALL;
+        if (isBacklogSheet) {
+            col_width_pixel = BACKLOG_COL_WIDTH_PIXEL;
+            col_width_pixel_all = BACKLOG_COL_WIDTH_PIXEL;
+        }
+
         //合并标题列
-        sheet.addMergedRegion(new CellRangeAddress(ROW_IDX_TITLE,ROW_IDX_TITLE,0,COL_WIDTH_PIXEL.length - 1));
+        sheet.addMergedRegion(new CellRangeAddress(ROW_IDX_TITLE,ROW_IDX_TITLE,0, col_width_pixel.length - 1));
         sheet.getRow(ROW_IDX_TITLE).setHeightInPoints(40);
 
-        sheet.addMergedRegion(new CellRangeAddress(ROW_IDX_SUBTITLE,ROW_IDX_SUBTITLE,0,COL_WIDTH_PIXEL.length - 1));
+        sheet.addMergedRegion(new CellRangeAddress(ROW_IDX_SUBTITLE,ROW_IDX_SUBTITLE,0, col_width_pixel.length - 1));
         sheet.getRow(ROW_IDX_SUBTITLE).setHeightInPoints(20);
+
+        sheet.getRow(ROW_IDX_HEADER).setHeightInPoints(35);
+
+        //冰冻抬头
+        sheet.createFreezePane(COL_IDX_STATUS, ROW_IDX_DATA);
 
         //隐藏hiddenKeys列, 其他列自动调整
 //        sheet.setColumnHidden(0, true);
@@ -352,12 +524,12 @@ public class ExcelProcessor {
         String excelColumns = PropertiesCache.getProp("excelShowAllColumns");
 
         for (int i = 0; i <= colCount; i++){
-            if (i < COL_WIDTH_PIXEL.length) {
+            if (i < col_width_pixel.length) {
                 int wu = 0;
                 if ("1".equals(excelColumns)) {
-                    wu = ExcelUtils.pixel2WidthUnits(COL_WIDTH_PIXEL_ALL[i]);
+                    wu = ExcelUtils.pixel2WidthUnits(col_width_pixel_all[i]);
                 } else {
-                    wu = ExcelUtils.pixel2WidthUnits(COL_WIDTH_PIXEL[i]);
+                    wu = ExcelUtils.pixel2WidthUnits(col_width_pixel[i]);
                 }
 
                 sheet.setColumnWidth(i, wu);//自动调整列宽度
@@ -365,6 +537,8 @@ public class ExcelProcessor {
                 sheet.autoSizeColumn(i);
             }
         }
+
+        short contentSize = (short)(isBacklogSheet? 9 : 12);
 
         //标题样式
         HSSFCellStyle titleStyle = workbook.createCellStyle();
@@ -375,6 +549,7 @@ public class ExcelProcessor {
         titleStyle.setFont(titleFont);
         titleStyle.setVerticalAlignment(VerticalAlignment.CENTER);
         titleStyle.setAlignment(HorizontalAlignment.CENTER);
+
         //子标题样式
         HSSFCellStyle subtitleStyle = workbook.createCellStyle();
         HSSFFont subtitleFont = workbook.createFont();
@@ -400,9 +575,10 @@ public class ExcelProcessor {
         teamStyle.setAlignment(HorizontalAlignment.CENTER);
         HSSFFont teamFont = workbook.createFont();
         teamFont.setFontName("微软雅黑");
-        teamFont.setFontHeightInPoints((short) 16);//设置字体大小
+        teamFont.setFontHeightInPoints((short) 14);//设置字体大小
         teamFont.setBold(true);
         teamStyle.setFont(teamFont);
+        teamStyle.setRotation((short)255);
 
         //列头字体样式
         HSSFCellStyle headerStyle = workbook.createCellStyle();
@@ -428,11 +604,14 @@ public class ExcelProcessor {
         issueStyle.cloneStyleFrom(borderStyle);
         HSSFFont issueFont = workbook.createFont();
         issueFont.setFontName("微软雅黑");
-        issueFont.setFontHeightInPoints((short) 12);//设置字体大小
+        issueFont.setFontHeightInPoints(contentSize);//设置字体大小
         issueStyle.setFont(issueFont);      //选择需要用到的字体格式
         issueStyle.setAlignment(HorizontalAlignment.LEFT);
         HSSFDataFormat df = workbook.createDataFormat();
         issueStyle.setDataFormat(df.getFormat("@"));    //设置文本格式
+        if (isBacklogSheet) {
+            issueStyle.setWrapText(true);
+        }
 
         //类型 = 故事/任务 加粗
         HSSFCellStyle storyOrTaskStyle = workbook.createCellStyle();
@@ -440,7 +619,7 @@ public class ExcelProcessor {
         HSSFFont storyOrTaskFont = workbook.createFont();
         storyOrTaskFont.setBold(true);
         storyOrTaskFont.setFontName("微软雅黑");
-        storyOrTaskFont.setFontHeightInPoints((short) 12);//设置字体大小
+        storyOrTaskFont.setFontHeightInPoints(contentSize);//设置字体大小
         storyOrTaskStyle.setFont(storyOrTaskFont);      //选择需要用到的字体格式
         storyOrTaskStyle.setAlignment(HorizontalAlignment.LEFT);
         storyOrTaskStyle.setFillForegroundColor(HSSFColor.HSSFColorPredefined.LIGHT_CORNFLOWER_BLUE.getIndex());
@@ -463,14 +642,28 @@ public class ExcelProcessor {
         doneStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
 
         //链接样式
-        CellStyle linkStyle = workbook.createCellStyle();
-        linkStyle.cloneStyleFrom(borderStyle);
+        CellStyle linkStyle4Issue = workbook.createCellStyle();
+        linkStyle4Issue.cloneStyleFrom(issueStyle);
         Font hlink_font = workbook.createFont();
         hlink_font.setFontName("微软雅黑");
-        hlink_font.setFontHeightInPoints((short) 12);
+        hlink_font.setFontHeightInPoints(contentSize);
         hlink_font.setUnderline(Font.U_SINGLE);
-        hlink_font.setColor(IndexedColors.BLUE.getIndex());
-        linkStyle.setFont(hlink_font);
+        hlink_font.setColor(IndexedColors.BLACK.getIndex());
+        linkStyle4Issue.setFont(hlink_font);
+        linkStyle4Issue.setAlignment(HorizontalAlignment.CENTER);
+
+        CellStyle linkStyle4Story = workbook.createCellStyle();
+        linkStyle4Story.cloneStyleFrom(issueStyle);
+        Font hlink_font_story = workbook.createFont();
+        hlink_font_story.setFontName("微软雅黑");
+        hlink_font_story.setFontHeightInPoints(contentSize);
+        hlink_font_story.setUnderline(Font.U_SINGLE);
+        hlink_font_story.setColor(IndexedColors.BLACK.getIndex());
+        linkStyle4Story.setFont(hlink_font_story);
+        linkStyle4Story.setAlignment(HorizontalAlignment.CENTER);
+        linkStyle4Story.setFillForegroundColor(HSSFColor.HSSFColorPredefined.LIGHT_CORNFLOWER_BLUE.getIndex());
+        linkStyle4Story.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
 
         for (int row = 0; row <= rowCount; row++) {
             HSSFRow excelRow = sheet.getRow(row);
@@ -495,9 +688,7 @@ public class ExcelProcessor {
                     excelCell.setCellStyle(headerStyle);
                 } else if (row == ROW_IDX_SUM) {
                     excelCell.setCellStyle(sumStyle);
-                } else if (jiraIssue != null && jiraIssue.isParent()){
-                    excelCell.setCellStyle(storyOrTaskStyle);
-                } else if (col == COL_IDX_STATUS && jiraIssue != null && jiraIssue.isSubTask()) {
+                } else if (col == COL_IDX_STATUS && jiraIssue.isSubTask()) {
                     if (jiraIssue.isTodo()) {
                         excelCell.setCellStyle(todoStyle);
                     } else if (jiraIssue.isDoing()) {
@@ -505,14 +696,33 @@ public class ExcelProcessor {
                     } else if (jiraIssue.isDone()) {
                         excelCell.setCellStyle(doneStyle);
                     }
+                } else if (jiraIssue.isParent()){
+                    if (isBacklogSheet && col >= COL_IDX_DESC) {
+                        //backlog里的描述备注不需要使用故事的加粗和着色
+                        excelCell.setCellStyle(issueStyle);
+                    } else {
+                        excelCell.setCellStyle(storyOrTaskStyle);
+                    }
                 } else {
                     excelCell.setCellStyle(issueStyle);
                 }
 
                 if (excelCell.getHyperlink() != null) {
-                    excelCell.setCellStyle(linkStyle);
+                    if (jiraIssue.isParent()) {
+                        excelCell.setCellStyle(linkStyle4Story);
+                    } else {
+                        excelCell.setCellStyle(linkStyle4Issue);
+                    }
                 }
 
+            }
+        }
+
+        //若行数太多，以防自动换行表太长，设置一个最大高度。
+        if (isBacklogSheet) {
+            for (int rowIdx = ROW_IDX_DATA; rowIdx <= rowCount; rowIdx++) {
+                HSSFRow excelRow = sheet.getRow(rowIdx);
+                setHighRowToDefault(excelRow, (short)60, COL_IDX_DESC, COL_IDX_COMMENTS);
             }
         }
 
@@ -620,6 +830,12 @@ public class ExcelProcessor {
 
     private static String key4Sort(JiraIssue jiraIssue, int seq) {
         return StringUtils.leftPad(jiraIssue.getCustomFields().get("teamId"), PADDING_LEN, "0") +
+                StringUtils.leftPad(String.valueOf(seq), PADDING_LEN, "0");
+    }
+
+    private static String key4SortBacklog(JiraIssue jiraIssue, int seq) {
+        return jiraIssue.getPriority4Sort() +
+                jiraIssue.getStatusCategory4Sort() +
                 StringUtils.leftPad(String.valueOf(seq), PADDING_LEN, "0");
     }
 

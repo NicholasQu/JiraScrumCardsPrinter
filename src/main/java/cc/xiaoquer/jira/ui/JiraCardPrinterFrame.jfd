@@ -13,7 +13,7 @@ new FormModel {
 			"foreground": sfield java.awt.SystemColor textHighlight
 			"background": new java.awt.Color( 204, 204, 255, 255 )
 			"$locationPolicy": 1
-			"title": "Jira看板打印 - v1.1 By Nicholas"
+			"title": "Jira看板打印 - v2.0 By Nicholas"
 			"defaultCloseOperation": 3
 			"font": new java.awt.Font( "Lucida Grande", 1, 13 )
 			"minimumSize": new java.awt.Dimension( 800, 700 )
@@ -29,7 +29,7 @@ new FormModel {
 				"minimumSize": new java.awt.Dimension( 812, 90 )
 				"preferredSize": new java.awt.Dimension( 655, 90 )
 				add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.GridBagLayout ) {
-					"$columnSpecs": "8, 70, 226, 64, 120, 64, 120, 79, 75"
+					"$columnSpecs": "8, 70, 202, 64, 120, 64, 120, 79, 64"
 					"$rowSpecs": "center:27"
 					"$hGap": 7
 					"$vGap": 7
@@ -37,7 +37,7 @@ new FormModel {
 					"$alignLeft": true
 				} ) {
 					name: "serverPanel"
-					"background": sfield java.awt.Color lightGray
+					"background": new java.awt.Color( 204, 204, 204, 255 )
 					"preferredSize": new java.awt.Dimension( 655, 80 )
 					"minimumSize": new java.awt.Dimension( 812, 80 )
 					"border": new javax.swing.border.TitledBorder( null, "Jira", 2, 0, new java.awt.Font( "Arial Black", 0, 16 ), sfield java.awt.Color red )
@@ -202,14 +202,14 @@ new FormModel {
 				} )
 				add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.GridBagLayout ) {
 					"$columnSpecs": "5, 220, 220, 439"
-					"$rowSpecs": "48, 36, 386, 117"
+					"$rowSpecs": "48, 36, 386, 144"
 					"$hGap": 5
 					"$vGap": 5
 					"$alignLeft": true
 					"$alignTop": true
 				} ) {
 					name: "boardPanel"
-					"background": new java.awt.Color( 255, 255, 255, 255 )
+					"background": new java.awt.Color( 204, 204, 204, 255 )
 					"border": #LineBorder0
 					add( new FormComponent( "javax.swing.JLabel" ) {
 						name: "lblTitleBoards"
@@ -225,6 +225,7 @@ new FormModel {
 						"text": "Active Sprints"
 						"font": new java.awt.Font( "Tahoma", 1, 13 )
 						"icon": new com.jformdesigner.model.SwingIcon( 0, "/images/jira/sprint.png" )
+						"background": new java.awt.Color( 204, 204, 255, 255 )
 					}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
 						"gridx": 2
 						"hAlign": 0
@@ -309,41 +310,80 @@ new FormModel {
 						"gridy": 2
 					} )
 					add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.GridBagLayout ) {
-						"$columnSpecs": "77, 72, 68, 113, 135, 0"
-						"$rowSpecs": "35, 27, 35, 10"
+						"$columnSpecs": "27, 132, 0"
+						"$rowSpecs": "38, 38, 32, 0"
+						"$hGap": 5
+						"$vGap": 5
+						"$alignLeft": true
+						"$alignTop": true
+					} ) {
+						name: "panel1"
+						"background": new java.awt.Color( 204, 204, 204, 255 )
+						add( new FormComponent( "javax.swing.JButton" ) {
+							name: "btnProductExcel"
+							"text": "产品视图Excel"
+							"font": &Font3 new java.awt.Font( "Lucida Grande", 1, 12 )
+							"enabled": false
+							"icon": &SwingIcon0 new com.jformdesigner.model.SwingIcon( 0, "/images/active.png" )
+							"minimumSize": &Dimension0 new java.awt.Dimension( 119, 25 )
+							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "btnProductExcelMouseClicked", true ) )
+						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
+							"gridx": 1
+						} )
+						add( new FormComponent( "javax.swing.JButton" ) {
+							name: "btnProductHtml"
+							"text": "发布产品视图"
+							"font": #Font3
+							"enabled": false
+							"icon": #SwingIcon0
+							"minimumSize": #Dimension0
+							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "btnProductHtmlMouseClicked", true ) )
+						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
+							"gridx": 1
+							"gridy": 1
+						} )
+					}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
+						"gridx": 1
+						"gridy": 3
+					} )
+					add( new FormContainer( "javax.swing.JPanel", new FormLayoutManager( class java.awt.GridBagLayout ) {
+						"$columnSpecs": "16, 77, 72, 68, 113, 135, 14"
+						"$rowSpecs": "38, 38, 32, 25"
 						"$hGap": 5
 						"$vGap": 5
 						"$alignTop": true
 						"$alignLeft": true
 					} ) {
 						name: "checkTreePanel"
-						"background": sfield java.awt.Color white
+						"background": new java.awt.Color( 204, 204, 204, 255 )
 						add( new FormComponent( "javax.swing.JLabel" ) {
 							name: "label9"
 							"text": "维度一："
 							"horizontalAlignment": 11
-						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) )
+						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
+							"gridx": 1
+						} )
 						add( new FormComponent( "javax.swing.JRadioButton" ) {
 							name: "optAll"
 							"text": "All"
 							"$buttonGroup": new FormReference( "buttonGroup1" )
-							"font": &Font3 new java.awt.Font( "Tahoma", 1, 12 )
+							"font": &Font4 new java.awt.Font( "Tahoma", 1, 12 )
 							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "optAllMouseClicked", true ) )
 						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
-							"gridx": 1
+							"gridx": 2
 						} )
 						add( new FormComponent( "javax.swing.JRadioButton" ) {
 							name: "optCancel"
 							"text": "None"
 							"$buttonGroup": new FormReference( "buttonGroup1" )
-							"font": #Font3
+							"font": #Font4
 							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "optCancelMouseClicked", true ) )
 						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
-							"gridx": 3
+							"gridx": 4
 						} )
 						add( new FormComponent( "javax.swing.JButton" ) {
 							name: "btnGenerate"
-							"text": "生成HTML"
+							"text": "打印Card"
 							"icon": new com.jformdesigner.model.SwingIcon( 0, "/images/printer.png" )
 							"preferredSize": new java.awt.Dimension( 121, 10 )
 							"minimumSize": new java.awt.Dimension( 121, 25 )
@@ -353,7 +393,7 @@ new FormModel {
 							"enabled": false
 							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "btnGenerateMouseClicked", true ) )
 						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
-							"gridx": 4
+							"gridx": 5
 						} )
 						add( new FormComponent( "javax.swing.JLabel" ) {
 							name: "label7"
@@ -361,6 +401,7 @@ new FormModel {
 							"horizontalAlignment": 11
 						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
 							"gridy": 1
+							"gridx": 1
 						} )
 						add( new FormComponent( "javax.swing.JCheckBox" ) {
 							name: "chkStory"
@@ -369,7 +410,7 @@ new FormModel {
 							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "chkStoryMouseClicked", true ) )
 						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
 							"gridy": 1
-							"gridx": 1
+							"gridx": 2
 						} )
 						add( new FormComponent( "javax.swing.JCheckBox" ) {
 							name: "chkTask"
@@ -377,7 +418,7 @@ new FormModel {
 							"selected": true
 							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "chkTaskMouseClicked", true ) )
 						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
-							"gridx": 2
+							"gridx": 3
 							"gridy": 1
 						} )
 						add( new FormComponent( "javax.swing.JCheckBox" ) {
@@ -386,15 +427,29 @@ new FormModel {
 							"selected": true
 							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "chkSubtaskMouseClicked", true ) )
 						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
-							"gridx": 3
+							"gridx": 4
+							"gridy": 1
+						} )
+						add( new FormComponent( "javax.swing.JButton" ) {
+							name: "btnExport"
+							"text": "导出Excel"
+							"font": #Font3
+							"enabled": false
+							"icon": new com.jformdesigner.model.SwingIcon( 0, "/images/database.png" )
+							"minimumSize": #Dimension0
+							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "btnExportMouseClicked", true ) )
+						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
+							"gridx": 5
 							"gridy": 1
 						} )
 						add( new FormComponent( "javax.swing.JLabel" ) {
 							name: "label8"
 							"text": "维度三:  "
 							"horizontalAlignment": 11
+							"background": new java.awt.Color( 204, 204, 204, 255 )
 						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
 							"gridy": 2
+							"gridx": 1
 						} )
 						add( new FormComponent( "javax.swing.JCheckBox" ) {
 							name: "chkTodo"
@@ -403,7 +458,7 @@ new FormModel {
 							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "chkTodoMouseClicked", true ) )
 						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
 							"gridy": 2
-							"gridx": 1
+							"gridx": 2
 						} )
 						add( new FormComponent( "javax.swing.JCheckBox" ) {
 							name: "chkDoing"
@@ -411,7 +466,7 @@ new FormModel {
 							"selected": true
 							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "chkDoingMouseClicked", true ) )
 						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
-							"gridx": 2
+							"gridx": 3
 							"gridy": 2
 						} )
 						add( new FormComponent( "javax.swing.JCheckBox" ) {
@@ -420,25 +475,13 @@ new FormModel {
 							"selected": true
 							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "chkDoneMouseClicked", true ) )
 						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
-							"gridx": 3
-							"gridy": 2
-						} )
-						add( new FormComponent( "javax.swing.JButton" ) {
-							name: "btnExport"
-							"text": "导出Excel"
-							"font": new java.awt.Font( "Lucida Grande", 1, 12 )
-							"enabled": false
-							"icon": new com.jformdesigner.model.SwingIcon( 0, "/images/database.png" )
-							"minimumSize": new java.awt.Dimension( 119, 25 )
-							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "btnExportMouseClicked", true ) )
-						}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
 							"gridx": 4
 							"gridy": 2
 						} )
 					}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {
-						"gridx": 1
+						"gridx": 2
 						"gridy": 3
-						"gridwidth": 3
+						"gridwidth": 2
 						"hAlign": 4
 					} )
 				}, new FormLayoutConstraints( class com.jformdesigner.runtime.GridBagConstraintsEx ) {

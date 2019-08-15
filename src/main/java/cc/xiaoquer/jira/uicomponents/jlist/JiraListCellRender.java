@@ -22,6 +22,8 @@ public class JiraListCellRender extends DefaultListCellRenderer {
                                                   int index, boolean isSelected, boolean cellHasFocus) {
         super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
 
+        if (index >= jiraList.size()) return this;
+
         Object object = jiraList.get(index);
 
         if (object instanceof JiraSprint) {

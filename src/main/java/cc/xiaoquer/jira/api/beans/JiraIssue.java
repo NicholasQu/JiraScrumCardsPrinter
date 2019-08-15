@@ -1,17 +1,19 @@
 package cc.xiaoquer.jira.api.beans;
 
 import cc.xiaoquer.jira.api.JIRA;
-import cc.xiaoquer.jira.utils.JSONParsingUtil;
+import cc.xiaoquer.jira.storage.PropertiesCache;
+import cc.xiaoquer.utils.JSONParsingUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 /**
  * Created by Nicholas on 2017/9/4.
@@ -20,17 +22,14 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class JiraIssue extends AbstractJiraEntity {
+    private String issueType = "";
+    private String issueId = "";
+    private String issueKey = "";
+    private String issueName = "";
+    private String issueStatus = "";
 
-    private String issueType;
-    private String issueId;
-    private String issueKey;
-    private String issueName;
-    private String issueStatus;
     private String owner = "";
 
-    private String epicId = "";
-    private String epicKey = "";
-    private String epicName = "";
     private String estimate = "";   //估算时间
     private String remainingTime = ""; //剩余时间
     private String estimateInSeconds = "";   //估算时间(单位秒)
@@ -41,27 +40,90 @@ public class JiraIssue extends AbstractJiraEntity {
     private String parentKey = "";
     private String parentName = "";
 
-    private String projectKey = "";
-    private String projectName = "";
-    private String boardId = "";        //从jListBoard中获取，issue的接口中的orginalBoardId是错误的（ETS而不是ETS-Arch的看板）
-    private String sprintId = "";
+    private JiraProject jiraProject;
+//    private String boardId = "";        //从jListBoard中获取，issue的接口中的orginalBoardId是错误的（ETS而不是ETS-Arch的看板）
+    private JiraBoard  jiraBoard;
+    private JiraSprint jiraSprint;
+    private JiraEpic   jiraEpic;
 
     //add at 2017.9.25
-    private String priority;
-    private String createdAt;
-    private String updatedAt;
-    private String description;
-    private String dueDate;
+    private String priority = "";
+    private String createdAt = "";
+    private String updatedAt = "";
+    private String description = "";
+    private String dueDate = "";
+    private String comments = "";
 
     private String allJson; //缓存所有的json数据
-
-    //这个字段需要大家自己去修改映射关系，用于扩展
-    private Map<String, String> customFields = new LinkedHashMap<String, String>();
 
     private boolean hasSubtask = false;
     private Map<String, JiraIssue> subTaskMap;
     private JSONArray subTaskJo;
 
+    public JiraIssue(JiraEpic jiraEpic) {
+        this.jiraEpic = jiraEpic;
+    }
+
+    private String formatDate(String d) {
+        try {
+            if (StringUtils.isNotBlank(d)) {
+                return defaultDateFormat.format(jiraDateFormat.parse(d));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return d;
+    }
+
+    public String getCreatedAt() {
+        return formatDate(this.createdAt);
+    }
+
+    public String getUpdatedAt() {
+        return formatDate(this.updatedAt);
+    }
+
+    public int getPriorityNum() {
+        if (priority == null) return 50;
+
+        switch(priority.toLowerCase()) {
+            case "highest":
+                return 10;
+            case "high":
+                return 30;
+            case "medium":
+                return 50;
+            case "low":
+                return 70;
+            case "lowest":
+                return 90;
+            default:
+                return 50;
+        }
+    }
+
+    //倒排序 填充固定长度的优先级数字,JIRA内的priority输入的数值最多只允许3位
+    public String getPriority4Sort() {
+        return String.valueOf(getPriorityNum());
+    }
+
+    public String getCustomEstimateDone() {
+        String estimateDone = getCustomField("estimatedone");
+        if (StringUtils.isNotBlank(estimateDone)) {
+            return formatDate(estimateDone);
+        } else {
+            return "";
+        }
+    }
+    //优先级的数字越大，优先级越高
+    public String getCustomActualDone() {
+        String actualdone = getCustomField("actualdone");
+        if (StringUtils.isNotBlank(actualdone)) {
+            return formatDate(actualdone);
+        } else {
+            return "";
+        }
+    }
 
 //    {
 //        "expand":"schema,names",
@@ -742,6 +804,24 @@ public class JiraIssue extends AbstractJiraEntity {
         }
     }
 
+    //优先级（high medium low）, 产品状态（doing>todo>done）
+    public Map<String, JiraIssue> getSortedSubTaskMap() {
+        Map<String, JiraIssue> sortedSubTaskMap = new TreeMap<>();
+
+        for (JiraIssue subJiraIssue : this.getSubTaskMap().values()) {
+            sortedSubTaskMap.put(subJiraIssue.getSortedKey(), subJiraIssue);
+        }
+
+        return sortedSubTaskMap;
+    }
+
+    public String getSortedKey() {
+        return this.getPriority4Sort()
+                + this.getStatusCategory4Sort()
+                + StringUtils.leftPad(this.getIssueId(), 10, "0");
+    }
+
+
     //已关闭的Sprint从缓存里面取issue
     public static Map<String, JiraIssue> toMap4FromCache(Map<String, JiraIssue> jiraIssueMap,String boardId, String sprintId) {
         Map<String, JiraIssue> sameOrderIssueMap = new LinkedHashMap<String, JiraIssue>();
@@ -820,21 +900,64 @@ public class JiraIssue extends AbstractJiraEntity {
         return "子任务".equalsIgnoreCase(this.getIssueType());
     }
 
-    public boolean isDone() {
-        return "完成".equalsIgnoreCase(this.getIssueStatus())
-                || "已关闭".equalsIgnoreCase(this.getIssueStatus())
-                || "废弃".equalsIgnoreCase(this.getIssueStatus());
+    public void setProjectId(String projectId) {
+        getJiraProject().setProjectId(projectId);
     }
 
-    public boolean isDoing() {
-        return "进行中".equalsIgnoreCase(this.getIssueStatus());
+    public String getProjectId() {
+        return this.getJiraProject().getProjectId();
     }
 
-    public boolean isTodo() {
-        return "待办".equalsIgnoreCase(this.getIssueStatus());
+    public JiraProject getJiraProject() {
+        if (this.jiraProject == null) {
+            this.jiraProject = new JiraProject();
+        }
+        return this.jiraProject;
+    }
+
+    public void setBoardId(String boardId) {
+        getJiraBoard().setBoardId(boardId);
+    }
+    public String getBoardId() {
+        return this.getJiraBoard().getBoardId();
+    }
+
+    public JiraBoard getJiraBoard() {
+        if (this.jiraBoard == null) {
+            this.jiraBoard = new JiraBoard();
+        }
+        return this.jiraBoard;
+    }
+
+    public void setSprintId(String sprintId) {
+        getJiraSprint().setSprintId(sprintId);
+    }
+
+    public String getSprintId() {
+        return this.getJiraSprint().getSprintId();
+    }
+
+    public JiraSprint getJiraSprint() {
+        if (this.jiraSprint == null) {
+            this.jiraSprint = new JiraSprint();
+        }
+        return this.jiraSprint;
+    }
+
+    public void setEpicId(String epicId) {
+        getJiraEpic().setEpicId(epicId);
+    }
+
+    public JiraEpic getJiraEpic() {
+        if (this.jiraEpic == null) {
+            this.jiraEpic = new JiraEpic();
+        }
+        return this.jiraEpic;
     }
 
     public static JiraIssue _parse(JSONObject inputJo, String boardId, String sprintId) {
+        refreshStatusCategory();
+
         JiraIssue jiraIssue = new JiraIssue();
         jiraIssue.setAllJson(inputJo.toJSONString());
 
@@ -845,12 +968,44 @@ public class JiraIssue extends AbstractJiraEntity {
         jiraIssue.setIssueType(fieldJo.getJSONObject("issuetype").getString("name"));
         jiraIssue.setIssueName(fieldJo.getString("summary"));
         jiraIssue.setIssueStatus(fieldJo.getJSONObject("status").getString("name"));
-
-        jiraIssue.setProjectKey(fieldJo.getJSONObject("project").getString("key"));
-        jiraIssue.setProjectName(fieldJo.getJSONObject("project").getString("name"));
+        jiraIssue.setStatusCategoryKey(fieldJo.getJSONObject("status").getJSONObject("statusCategory").getString("key"));
 
         jiraIssue.setBoardId(boardId);
+
+        //设置Sprint对象
         jiraIssue.setSprintId(sprintId);
+        JSONObject sprintJo = fieldJo.getJSONObject("sprint");
+        if (sprintJo == null) {
+            //只有spring active的时候才能取到sprint属性，否则是closeSprints数组
+            JSONArray sprintArray = fieldJo.getJSONArray("closedSprints");
+            if (sprintArray != null) {
+                sprintJo = sprintArray.getJSONObject(0);
+
+                if (sprintId != null) {
+                    for (int i = 0; i < sprintArray.size(); i++) {
+                        sprintJo = sprintArray.getJSONObject(i);
+                        if (sprintId.equals(sprintJo.getString("id"))) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        if (sprintJo != null) {
+            jiraIssue.getJiraSprint().setJSONObject(sprintJo);
+        }
+
+        //设置Project对象
+        JSONObject projectJo = fieldJo.getJSONObject("project");
+        if (projectJo != null) {
+            jiraIssue.getJiraProject().setJSONObject(projectJo);
+        }
+
+        //设置Epic对象
+        JSONObject epicJo = fieldJo.getJSONObject("epic");
+        if (epicJo != null) {
+            jiraIssue.getJiraEpic().setJSONObject(epicJo);
+        }
 
         try {
             jiraIssue.setOwner(nullToBlank(fieldJo.getJSONObject("assignee").getString("displayName")));
@@ -865,15 +1020,15 @@ public class JiraIssue extends AbstractJiraEntity {
         }
 
         try {
-            jiraIssue.setEpicKey(nullToBlank(fieldJo.getJSONObject("epic").getString("key")));
+            jiraIssue.getJiraEpic().setEpicKey(nullToBlank(fieldJo.getJSONObject("epic").getString("key")));
         } catch (Exception e) {
-            jiraIssue.setEpicKey("");
+            jiraIssue.getJiraEpic().setEpicKey("");
         }
 
         try {
-            jiraIssue.setEpicName(nullToBlank(fieldJo.getJSONObject("epic").getString("summary")));
+            jiraIssue.getJiraEpic().setEpicName(nullToBlank(fieldJo.getJSONObject("epic").getString("summary")));
         } catch (Exception e) {
-            jiraIssue.setEpicName("");
+            jiraIssue.getJiraEpic().setEpicName("");
         }
 
         try {
@@ -917,17 +1072,43 @@ public class JiraIssue extends AbstractJiraEntity {
             jiraIssue.setDueDate("");
         }
 
+        StringBuffer commentStr = new StringBuffer();
+        try {
+            JSONObject commentArrayJO = fieldJo.getJSONObject("comment");
+            int totalComments = commentArrayJO.getInteger("total");
+
+            if (totalComments > 0) {
+                JSONArray commentsArray = commentArrayJO.getJSONArray("comments");
+                //倒排序只取最后的3个（JIRA默认是按照created时间正排序的，这里因为只取3个，不用updated倒排序了）
+                for (int i = commentsArray.size() - 1; i >= 0 && i >= commentsArray.size() - 3; i--) {
+                    JSONObject commentJO = commentsArray.getJSONObject(i);
+                    String updated = commentJO.getString("updated");
+                    String body = commentJO.getString("body");
+                    String author = commentJO.getJSONObject("author").getString("displayName");
+
+                    String updatedFormtted = jiraIssue.defaultDateFormat.format(jiraIssue.jiraDateFormat.parse(updated));
+
+                    if (commentStr.length() > 0) {
+                        commentStr.append("\r\n");
+                    }
+                    commentStr.append(updatedFormtted).append(" ").append(author).append(": \r\n").append(body);
+                }
+            }
+        } catch (Exception e) {
+        }
+        jiraIssue.setComments(commentStr.toString());
+
 
         //2018-3-22 Nicholas
         //递归解析JSON映射关系Map, 调用JIRA.AGILE_ISSUE_URL返回的JSON。
         //根节点是基于fields，对应的动态添加的Key写法应该是 fields>assignee>name
         //示例：
-//        fields>assignee>displayName ============= 樊得宝
-//        fields>assignee>name ============= debao.fan
-//        fields>assignee>self ============= http://99.48.46.160:8080/rest/api/2/user?username=debao.fan
+//        fields>assignee>displayName ============= 曲
+//        fields>assignee>name ============= nicholas.qu
+//        fields>assignee>self ============= http://xxxxx/rest/api/2/user?username=debao.fan
 //        fields>assignee>active ============= true
 //        fields>assignee>timeZone ============= Asia/Shanghai
-//        fields>assignee>key ============= debao.fan
+//        fields>assignee>key ============= nicholas
 //        fields>worklog>total ============= 0
 //        fields>worklog>maxResults ============= 20
 //        fields>worklog>startAt ============= 0
@@ -952,9 +1133,9 @@ public class JiraIssue extends AbstractJiraEntity {
 
         } else if (jiraIssue.isParent()) { //(jiraIssue.getEpicKey() != null && jiraIssue.getEpicKey().length() > 0) {
             jiraIssue.setParentType("Epic");
-            jiraIssue.setParentId(nullToBlank(jiraIssue.getEpicId()));
-            jiraIssue.setParentKey(nullToBlank(jiraIssue.getEpicKey()));
-            jiraIssue.setParentName(nullToBlank(jiraIssue.getEpicName()));
+            jiraIssue.setParentId(nullToBlank(jiraIssue.getJiraEpic().getEpicId()));
+            jiraIssue.setParentKey(nullToBlank(jiraIssue.getJiraEpic().getEpicKey()));
+            jiraIssue.setParentName(nullToBlank(jiraIssue.getJiraEpic().getEpicName()));
         }
 
         JSONArray subTasksJo = fieldJo.getJSONArray("subtasks");

@@ -6,18 +6,20 @@ package cc.xiaoquer.jira.ui;
 
 import cc.xiaoquer.jira.api.JIRA;
 import cc.xiaoquer.jira.api.beans.JiraBoard;
+import cc.xiaoquer.jira.api.beans.JiraEpic;
 import cc.xiaoquer.jira.api.beans.JiraIssue;
 import cc.xiaoquer.jira.api.beans.JiraSprint;
 import cc.xiaoquer.jira.autoupdater.JiraAutoUpdater;
-import cc.xiaoquer.jira.excel.ExcelProcessor;
+import cc.xiaoquer.jira.excel.ExcelProcessor4Sprint;
+import cc.xiaoquer.jira.excel.VPLViaExcel;
 import cc.xiaoquer.jira.html.HtmlGenerator;
+import cc.xiaoquer.jira.html.VPLViaHtml;
 import cc.xiaoquer.jira.storage.PropertiesCache;
 import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeData;
 import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeEditor;
 import cc.xiaoquer.jira.uicomponents.checkboxtree.CheckBoxNodeRenderer;
 import cc.xiaoquer.jira.uicomponents.jlist.JiraListCellRender;
 import com.alibaba.fastjson.JSON;
-import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.swing.*;
@@ -35,6 +37,7 @@ import java.awt.datatransfer.StringSelection;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.*;
 import java.io.*;
+import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.List;
@@ -329,6 +332,8 @@ public class JiraCardPrinterFrame {
 
         lblStatus.setText(JIRA.connectStatus);
 
+        resetResultSetAndText();
+
         if (isConnected) {
             PropertiesCache.setHost(url);
             PropertiesCache.setUserName(user);
@@ -529,7 +534,16 @@ public class JiraCardPrinterFrame {
         lblSelectedBoardSprint.setText("");
     }
 
+    private void resetButton() {
+        btnGenerate.setEnabled(false);
+        btnExport.setEnabled(false);
+        btnProductHtml.setEnabled(false);
+        btnProductExcel.setEnabled(false);
+    }
+
     private void renderSprints(String boardId) {
+        resetButton();
+
         if (boardId == null || boardId.length() == 0){
             return;
         }
@@ -562,6 +576,9 @@ public class JiraCardPrinterFrame {
         lblSprintCount.setText(STATUS_SPRINT_COUNT.replace("{}", sprintsModel.size() + ""));
         lblQueryStatus.setText(getHHMMSS() + "查询Sprints成功");
 
+        btnExport.setEnabled(true);
+        btnProductHtml.setEnabled(true);
+        btnProductExcel.setEnabled(true);
     }
 
     private void renderIssueTree(String boardDisplayName, String sprintDisplayName) {
@@ -890,6 +907,9 @@ public class JiraCardPrinterFrame {
     }
 
     private void btnGenerateMouseClicked(MouseEvent e) {
+        if (!btnGenerate.isEnabled()) {
+            return;
+        }
         btnGenerate.setEnabled(false);
 
         SwingUtilities.invokeLater(new Runnable() {
@@ -968,6 +988,9 @@ public class JiraCardPrinterFrame {
     }
 
     private void btnExportMouseClicked(MouseEvent e) {
+        if (!btnExport.isEnabled()) {
+            return;
+        }
         btnExport.setEnabled(false);
 
         SwingUtilities.invokeLater(new Runnable() {
@@ -985,16 +1008,10 @@ public class JiraCardPrinterFrame {
     }
 
     private void export() {
-        String boardName = getNameByDisplayName((String)jListBoards.getSelectedValue());
-        String sprintName = getNameByDisplayName((String)jlistSprints.getSelectedValue());
-
         String boardId      = getIdByDisplayName((String)jListBoards.getSelectedValue());
         String sprintId     = getIdByDisplayName((String)jlistSprints.getSelectedValue());
 
-        //更新为导出顺序与jira看板中的顺序一致
-        Map<String, JiraIssue> issueMap = JIRA.getIssueMapWithSameOrder(boardId, sprintId);
-
-        String excelPath = ExcelProcessor.write(boardName, sprintName, issueMap);
+        String excelPath = ExcelProcessor4Sprint.write(boardId, sprintId);
 
         Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
         Transferable tText = new StringSelection(excelPath);
@@ -1100,7 +1117,6 @@ public class JiraCardPrinterFrame {
     }
     private String getGithubDoc(String fileName) {
 
-
 //        String response = JIRA.getResponse("https://api.github.com/repos/NicholasQu/JiraScrumCardsPrinter/contents/README.md", null,null, 5);
         String response = JIRA.getResponse("https://api.github.com/repos/NicholasQu/JiraScrumCardsPrinter/contents/raw/eastereggs/" + fileName, null, null, 5);
 
@@ -1131,6 +1147,113 @@ public class JiraCardPrinterFrame {
             }
         }
         return eggStr;
+    }
+
+    private void btnProductHtmlMouseClicked(MouseEvent e) {
+        if (!btnProductHtml.isEnabled()) {
+            return;
+        }
+
+        String boardId = getIdByDisplayName((String)jListBoards.getSelectedValue());
+        if ( StringUtils.isBlank(boardId) ) {
+            int ret = JOptionPane.showOptionDialog
+                    (jiraFrame, "请选中产品池看板，再点击导出产品视图！", "提示",
+                            JOptionPane.OK_OPTION, JOptionPane.INFORMATION_MESSAGE, null, null, null);
+            return;
+        }
+
+        btnProductHtml.setEnabled(false);
+
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    exportProductView(boardId, "html");
+                    Thread.sleep(100L);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+                btnProductHtml.setEnabled(true);
+            }
+        });
+    }
+
+    //生成产品视图
+    private void exportProductView(String boardId, String fileType) {
+
+        //更新为导出顺序与jira看板中的顺序一致
+        Map<String, Map<String, JiraIssue>> productLines = JiraEpic.viewProductLine(boardId);
+//        String filePath = ExcelProcessor4ProductLine.write(productLines);
+
+        String filePath = "";
+        int ret = 0;
+        if ("html".equals(fileType)) {
+            filePath = VPLViaHtml.generate(productLines);
+        } else {
+            filePath = VPLViaExcel.generate(productLines);
+        }
+
+        Clipboard clip = Toolkit.getDefaultToolkit().getSystemClipboard();
+        Transferable tText = new StringSelection(filePath);
+        clip.setContents(tText, null);
+
+        String desc = "";
+        if ("html".equals(fileType)) {
+            desc = "HTML远程发布" + (filePath.startsWith("http") ? "成功" : "失败");
+            ret = JOptionPane.showOptionDialog
+                    (null, desc + ", 路径已复制到粘贴板！\n\n【路径:" + filePath + "】\n\n是否直接打开？", "提示",
+                            JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE, null, null, null);
+        } else {
+            ret = JOptionPane.showOptionDialog
+                    (null, "产品视图Excel生成, 路径已复制到粘贴板！\n\n【路径:" + filePath + "】\n\n是否直接打开？", "提示",
+                            JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE, null, null, null);
+        }
+
+        if (JOptionPane.OK_OPTION == ret) {
+            try {
+//                Runtime.getRuntime().exec(new String[] { "open", filePath });
+                if (filePath.startsWith("http")) {
+                    Desktop.getDesktop().browse(new URI(filePath));
+                } else {
+                    Desktop.getDesktop().open(new File(filePath));
+                }
+//                ProcessBuilder pb = new ProcessBuilder("open", filePath);
+//                Process p = pb.start();
+//                int exitCode = p.waitFor();
+            } catch (Exception ex) {
+                System.out.println("Opening excel file throws exception");
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    private void btnProductExcelMouseClicked(MouseEvent e) {
+        if (!btnProductExcel.isEnabled()) {
+            return;
+        }
+
+        String boardId = getIdByDisplayName((String)jListBoards.getSelectedValue());
+        if ( StringUtils.isBlank(boardId) ) {
+            int ret = JOptionPane.showOptionDialog
+                    (jiraFrame, "请选中产品池看板，再点击导出产品视图！", "提示",
+                            JOptionPane.OK_OPTION, JOptionPane.INFORMATION_MESSAGE, null, null, null);
+            return;
+        }
+
+        btnProductExcel.setEnabled(false);
+
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    exportProductView(boardId, "excel");
+                    Thread.sleep(100L);
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+                btnProductExcel.setEnabled(true);
+            }
+        });
     }
 
     private void initComponents() {
@@ -1168,6 +1291,9 @@ public class JiraCardPrinterFrame {
         scrollPaneBoard = new JScrollPane();
         scrollPaneSprint = new JScrollPane();
         scrollPaneCard = new JScrollPane();
+        panel1 = new JPanel();
+        btnProductExcel = new JButton();
+        btnProductHtml = new JButton();
         checkTreePanel = new JPanel();
         label9 = new JLabel();
         optAll = new JRadioButton();
@@ -1177,17 +1303,17 @@ public class JiraCardPrinterFrame {
         chkStory = new JCheckBox();
         chkTask = new JCheckBox();
         chkSubtask = new JCheckBox();
+        btnExport = new JButton();
         label8 = new JLabel();
         chkTodo = new JCheckBox();
         chkDoing = new JCheckBox();
         chkDone = new JCheckBox();
-        btnExport = new JButton();
 
         //======== jiraFrame ========
         {
             jiraFrame.setForeground(SystemColor.textHighlight);
             jiraFrame.setBackground(new Color(204, 204, 255));
-            jiraFrame.setTitle("Jira\u770b\u677f\u6253\u5370 - v1.1 By Nicholas");
+            jiraFrame.setTitle("Jira\u770b\u677f\u6253\u5370 - v2.0 By Nicholas");
             jiraFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
             jiraFrame.setFont(new Font("Lucida Grande", Font.BOLD, 13));
             jiraFrame.setMinimumSize(new Dimension(800, 700));
@@ -1220,7 +1346,7 @@ public class JiraCardPrinterFrame {
 
                 //======== serverPanel ========
                 {
-                    serverPanel.setBackground(Color.lightGray);
+                    serverPanel.setBackground(new Color(204, 204, 204));
                     serverPanel.setPreferredSize(new Dimension(655, 80));
                     serverPanel.setMinimumSize(new Dimension(812, 80));
                     serverPanel.setBorder(new TitledBorder(null, "Jira", TitledBorder.CENTER, TitledBorder.DEFAULT_POSITION,
@@ -1228,7 +1354,7 @@ public class JiraCardPrinterFrame {
                     serverPanel.setMaximumSize(new Dimension(900, 80));
                     serverPanel.setFont(new Font("Lucida Grande", Font.PLAIN, 13));
                     serverPanel.setLayout(new GridBagLayout());
-                    ((GridBagLayout)serverPanel.getLayout()).columnWidths = new int[] {15, 77, 233, 71, 127, 71, 127, 86, 75, 0};
+                    ((GridBagLayout)serverPanel.getLayout()).columnWidths = new int[] {15, 77, 209, 71, 127, 71, 127, 86, 64, 0};
                     ((GridBagLayout)serverPanel.getLayout()).rowHeights = new int[] {27, 0};
                     ((GridBagLayout)serverPanel.getLayout()).columnWeights = new double[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0E-4};
                     ((GridBagLayout)serverPanel.getLayout()).rowWeights = new double[] {0.0, 1.0E-4};
@@ -1403,11 +1529,11 @@ public class JiraCardPrinterFrame {
 
                 //======== boardPanel ========
                 {
-                    boardPanel.setBackground(Color.white);
+                    boardPanel.setBackground(new Color(204, 204, 204));
                     boardPanel.setBorder(LineBorder.createBlackLineBorder());
                     boardPanel.setLayout(new GridBagLayout());
                     ((GridBagLayout)boardPanel.getLayout()).columnWidths = new int[] {10, 225, 225, 439, 0};
-                    ((GridBagLayout)boardPanel.getLayout()).rowHeights = new int[] {53, 41, 391, 117, 0};
+                    ((GridBagLayout)boardPanel.getLayout()).rowHeights = new int[] {53, 41, 391, 144, 0};
                     ((GridBagLayout)boardPanel.getLayout()).columnWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};
                     ((GridBagLayout)boardPanel.getLayout()).rowWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};
 
@@ -1424,6 +1550,7 @@ public class JiraCardPrinterFrame {
                     label5.setText("Active Sprints");
                     label5.setFont(new Font("Tahoma", Font.BOLD, 13));
                     label5.setIcon(new ImageIcon(getClass().getResource("/images/jira/sprint.png")));
+                    label5.setBackground(new Color(204, 204, 255));
                     boardPanel.add(label5, new GridBagConstraints(2, 0, 1, 1, 0.0, 0.0,
                         GridBagConstraints.CENTER, GridBagConstraints.VERTICAL,
                         new Insets(0, 0, 5, 5), 0, 0));
@@ -1513,19 +1640,64 @@ public class JiraCardPrinterFrame {
                         GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                         new Insets(0, 0, 5, 0), 0, 0));
 
+                    //======== panel1 ========
+                    {
+                        panel1.setBackground(new Color(204, 204, 204));
+                        panel1.setLayout(new GridBagLayout());
+                        ((GridBagLayout)panel1.getLayout()).columnWidths = new int[] {32, 137, 0, 0};
+                        ((GridBagLayout)panel1.getLayout()).rowHeights = new int[] {43, 43, 37, 0, 0};
+                        ((GridBagLayout)panel1.getLayout()).columnWeights = new double[] {0.0, 0.0, 0.0, 1.0E-4};
+                        ((GridBagLayout)panel1.getLayout()).rowWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};
+
+                        //---- btnProductExcel ----
+                        btnProductExcel.setText("\u4ea7\u54c1\u89c6\u56feExcel");
+                        btnProductExcel.setFont(new Font("Lucida Grande", Font.BOLD, 12));
+                        btnProductExcel.setEnabled(false);
+                        btnProductExcel.setIcon(new ImageIcon(getClass().getResource("/images/active.png")));
+                        btnProductExcel.setMinimumSize(new Dimension(119, 25));
+                        btnProductExcel.addMouseListener(new MouseAdapter() {
+                            @Override
+                            public void mouseClicked(MouseEvent e) {
+                                btnProductExcelMouseClicked(e);
+                            }
+                        });
+                        panel1.add(btnProductExcel, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 5, 5), 0, 0));
+
+                        //---- btnProductHtml ----
+                        btnProductHtml.setText("\u53d1\u5e03\u4ea7\u54c1\u89c6\u56fe");
+                        btnProductHtml.setFont(new Font("Lucida Grande", Font.BOLD, 12));
+                        btnProductHtml.setEnabled(false);
+                        btnProductHtml.setIcon(new ImageIcon(getClass().getResource("/images/active.png")));
+                        btnProductHtml.setMinimumSize(new Dimension(119, 25));
+                        btnProductHtml.addMouseListener(new MouseAdapter() {
+                            @Override
+                            public void mouseClicked(MouseEvent e) {
+                                btnProductHtmlMouseClicked(e);
+                            }
+                        });
+                        panel1.add(btnProductHtml, new GridBagConstraints(1, 1, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 5, 5), 0, 0));
+                    }
+                    boardPanel.add(panel1, new GridBagConstraints(1, 3, 1, 1, 0.0, 0.0,
+                        GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                        new Insets(0, 0, 0, 5), 0, 0));
+
                     //======== checkTreePanel ========
                     {
-                        checkTreePanel.setBackground(Color.white);
+                        checkTreePanel.setBackground(new Color(204, 204, 204));
                         checkTreePanel.setLayout(new GridBagLayout());
-                        ((GridBagLayout)checkTreePanel.getLayout()).columnWidths = new int[] {82, 77, 73, 118, 140, 0, 0};
-                        ((GridBagLayout)checkTreePanel.getLayout()).rowHeights = new int[] {40, 32, 40, 10, 0};
-                        ((GridBagLayout)checkTreePanel.getLayout()).columnWeights = new double[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0E-4};
+                        ((GridBagLayout)checkTreePanel.getLayout()).columnWidths = new int[] {21, 82, 77, 73, 118, 140, 14, 0};
+                        ((GridBagLayout)checkTreePanel.getLayout()).rowHeights = new int[] {43, 43, 37, 25, 0};
+                        ((GridBagLayout)checkTreePanel.getLayout()).columnWeights = new double[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0E-4};
                         ((GridBagLayout)checkTreePanel.getLayout()).rowWeights = new double[] {0.0, 0.0, 0.0, 0.0, 1.0E-4};
 
                         //---- label9 ----
                         label9.setText("\u7ef4\u5ea6\u4e00\uff1a");
                         label9.setHorizontalAlignment(SwingConstants.TRAILING);
-                        checkTreePanel.add(label9, new GridBagConstraints(0, 0, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(label9, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1538,7 +1710,7 @@ public class JiraCardPrinterFrame {
                                 optAllMouseClicked(e);
                             }
                         });
-                        checkTreePanel.add(optAll, new GridBagConstraints(1, 0, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(optAll, new GridBagConstraints(2, 0, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1551,12 +1723,12 @@ public class JiraCardPrinterFrame {
                                 optCancelMouseClicked(e);
                             }
                         });
-                        checkTreePanel.add(optCancel, new GridBagConstraints(3, 0, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(optCancel, new GridBagConstraints(4, 0, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
                         //---- btnGenerate ----
-                        btnGenerate.setText("\u751f\u6210HTML");
+                        btnGenerate.setText("\u6253\u5370Card");
                         btnGenerate.setIcon(new ImageIcon(getClass().getResource("/images/printer.png")));
                         btnGenerate.setPreferredSize(new Dimension(121, 10));
                         btnGenerate.setMinimumSize(new Dimension(121, 25));
@@ -1570,14 +1742,14 @@ public class JiraCardPrinterFrame {
                                 btnGenerateMouseClicked(e);
                             }
                         });
-                        checkTreePanel.add(btnGenerate, new GridBagConstraints(4, 0, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(btnGenerate, new GridBagConstraints(5, 0, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
                         //---- label7 ----
                         label7.setText("\u7ef4\u5ea6\u4e8c\uff1a");
                         label7.setHorizontalAlignment(SwingConstants.TRAILING);
-                        checkTreePanel.add(label7, new GridBagConstraints(0, 1, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(label7, new GridBagConstraints(1, 1, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1590,7 +1762,7 @@ public class JiraCardPrinterFrame {
                                 chkStoryMouseClicked(e);
                             }
                         });
-                        checkTreePanel.add(chkStory, new GridBagConstraints(1, 1, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(chkStory, new GridBagConstraints(2, 1, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1603,7 +1775,7 @@ public class JiraCardPrinterFrame {
                                 chkTaskMouseClicked(e);
                             }
                         });
-                        checkTreePanel.add(chkTask, new GridBagConstraints(2, 1, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(chkTask, new GridBagConstraints(3, 1, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1616,53 +1788,7 @@ public class JiraCardPrinterFrame {
                                 chkSubtaskMouseClicked(e);
                             }
                         });
-                        checkTreePanel.add(chkSubtask, new GridBagConstraints(3, 1, 1, 1, 0.0, 0.0,
-                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                            new Insets(0, 0, 5, 5), 0, 0));
-
-                        //---- label8 ----
-                        label8.setText("\u7ef4\u5ea6\u4e09:  ");
-                        label8.setHorizontalAlignment(SwingConstants.TRAILING);
-                        checkTreePanel.add(label8, new GridBagConstraints(0, 2, 1, 1, 0.0, 0.0,
-                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                            new Insets(0, 0, 5, 5), 0, 0));
-
-                        //---- chkTodo ----
-                        chkTodo.setText("Todo");
-                        chkTodo.setSelected(true);
-                        chkTodo.addMouseListener(new MouseAdapter() {
-                            @Override
-                            public void mouseClicked(MouseEvent e) {
-                                chkTodoMouseClicked(e);
-                            }
-                        });
-                        checkTreePanel.add(chkTodo, new GridBagConstraints(1, 2, 1, 1, 0.0, 0.0,
-                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                            new Insets(0, 0, 5, 5), 0, 0));
-
-                        //---- chkDoing ----
-                        chkDoing.setText("Doing");
-                        chkDoing.setSelected(true);
-                        chkDoing.addMouseListener(new MouseAdapter() {
-                            @Override
-                            public void mouseClicked(MouseEvent e) {
-                                chkDoingMouseClicked(e);
-                            }
-                        });
-                        checkTreePanel.add(chkDoing, new GridBagConstraints(2, 2, 1, 1, 0.0, 0.0,
-                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
-                            new Insets(0, 0, 5, 5), 0, 0));
-
-                        //---- chkDone ----
-                        chkDone.setText("Done");
-                        chkDone.setSelected(true);
-                        chkDone.addMouseListener(new MouseAdapter() {
-                            @Override
-                            public void mouseClicked(MouseEvent e) {
-                                chkDoneMouseClicked(e);
-                            }
-                        });
-                        checkTreePanel.add(chkDone, new GridBagConstraints(3, 2, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(chkSubtask, new GridBagConstraints(4, 1, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
 
@@ -1678,11 +1804,58 @@ public class JiraCardPrinterFrame {
                                 btnExportMouseClicked(e);
                             }
                         });
-                        checkTreePanel.add(btnExport, new GridBagConstraints(4, 2, 1, 1, 0.0, 0.0,
+                        checkTreePanel.add(btnExport, new GridBagConstraints(5, 1, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 5, 5), 0, 0));
+
+                        //---- label8 ----
+                        label8.setText("\u7ef4\u5ea6\u4e09:  ");
+                        label8.setHorizontalAlignment(SwingConstants.TRAILING);
+                        label8.setBackground(new Color(204, 204, 204));
+                        checkTreePanel.add(label8, new GridBagConstraints(1, 2, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 5, 5), 0, 0));
+
+                        //---- chkTodo ----
+                        chkTodo.setText("Todo");
+                        chkTodo.setSelected(true);
+                        chkTodo.addMouseListener(new MouseAdapter() {
+                            @Override
+                            public void mouseClicked(MouseEvent e) {
+                                chkTodoMouseClicked(e);
+                            }
+                        });
+                        checkTreePanel.add(chkTodo, new GridBagConstraints(2, 2, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 5, 5), 0, 0));
+
+                        //---- chkDoing ----
+                        chkDoing.setText("Doing");
+                        chkDoing.setSelected(true);
+                        chkDoing.addMouseListener(new MouseAdapter() {
+                            @Override
+                            public void mouseClicked(MouseEvent e) {
+                                chkDoingMouseClicked(e);
+                            }
+                        });
+                        checkTreePanel.add(chkDoing, new GridBagConstraints(3, 2, 1, 1, 0.0, 0.0,
+                            GridBagConstraints.CENTER, GridBagConstraints.BOTH,
+                            new Insets(0, 0, 5, 5), 0, 0));
+
+                        //---- chkDone ----
+                        chkDone.setText("Done");
+                        chkDone.setSelected(true);
+                        chkDone.addMouseListener(new MouseAdapter() {
+                            @Override
+                            public void mouseClicked(MouseEvent e) {
+                                chkDoneMouseClicked(e);
+                            }
+                        });
+                        checkTreePanel.add(chkDone, new GridBagConstraints(4, 2, 1, 1, 0.0, 0.0,
                             GridBagConstraints.CENTER, GridBagConstraints.BOTH,
                             new Insets(0, 0, 5, 5), 0, 0));
                     }
-                    boardPanel.add(checkTreePanel, new GridBagConstraints(1, 3, 3, 1, 0.0, 0.0,
+                    boardPanel.add(checkTreePanel, new GridBagConstraints(2, 3, 2, 1, 0.0, 0.0,
                         GridBagConstraints.EAST, GridBagConstraints.VERTICAL,
                         new Insets(0, 0, 0, 0), 0, 0));
                 }
@@ -1773,6 +1946,9 @@ public class JiraCardPrinterFrame {
     private JScrollPane scrollPaneBoard;
     private JScrollPane scrollPaneSprint;
     private JScrollPane scrollPaneCard;
+    private JPanel panel1;
+    private JButton btnProductExcel;
+    private JButton btnProductHtml;
     private JPanel checkTreePanel;
     private JLabel label9;
     private JRadioButton optAll;
@@ -1782,10 +1958,10 @@ public class JiraCardPrinterFrame {
     private JCheckBox chkStory;
     private JCheckBox chkTask;
     private JCheckBox chkSubtask;
+    private JButton btnExport;
     private JLabel label8;
     private JCheckBox chkTodo;
     private JCheckBox chkDoing;
     private JCheckBox chkDone;
-    private JButton btnExport;
     // JFormDesigner - End of variables declaration  //GEN-END:variables
 }

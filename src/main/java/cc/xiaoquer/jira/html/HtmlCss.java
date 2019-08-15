@@ -4,7 +4,7 @@ package cc.xiaoquer.jira.html;
  * Created by Nicholas on 2017/9/6.
  */
 public class HtmlCss {
-    public static final String COMMON = "\n" +
+    public static final String CARD_COMMON = "\n" +
             " body  { margin: 0; font-family: Arial, Helvetica, sans-serif; font-size:18px; } \n" +
             " .kanban_name {font-style:italic;} \n" +
             " .parent_name {font-style:bold;} \n" +
@@ -18,7 +18,8 @@ public class HtmlCss {
 //            " tbody { display: block; page-break-after: always; page-break-before: avoid; page-break-inside:avoid; } \n" +
             " \n";
 
-    private static final String CARD = "\n" +
+
+    public static final String CARD = "\n" +
             "#cardview  \n" +
             "{  " +
             "    font-family: Lucida Sans Unicode, Lucida Grande, Sans-Serif;  " +
@@ -131,4 +132,48 @@ public class HtmlCss {
             "    body.A5                    { width: 148mm }\n" +
             "}";
 
+    public static final String TABLE_COMMON =
+            "\n" +
+            " #divCenterWithMargin  { overflow:hidden; margin:10px auto auto;width:95%; } \n" +
+            " h1 { align:center } \n" +
+            " h4 { align:right } \n" +
+            " table { width:100%;} \n" +
+            "a:link { color:#1652c6; text-decoration:underline;} \n" +
+            "a:visited { color:#1652c6; text-decoration:none;} \n" +
+            "a:hover { color:#1652c6; text-decoration:none;} \n" +
+            "a:active { color:#1652c6; text-decoration:none;} \n" +
+            "#defaultTable  \n" +
+            "{  " +
+            "    font-family: Lucida Sans Unicode, Lucida Grande, Sans-Serif;  " +
+            "    color: @COLOR_ON_BACKGROUND@;  " +
+            "    border-collapse: collapse;  " +
+            "    border-color: black;" +
+            "    border-style: solid;" +
+            "    border-width: 2px;" +
+            "    page-break-inside:avoid;" +
+            "    table-layout: fixed;" +
+            "    word-break: break-all;" +
+            "    width:100%;" +
+            "}  \n" +
+            "#defaultTable th \n" +
+            "{  " +
+            "    font-size: 14px;  " +
+            "    font-weight: bold;  " +
+            "    padding: 0px;  " +
+            "    border-color: #000;" +
+            "    border-style: solid;" +
+            "    border-width: 2px;" +
+            "    background-color: yellowgreen;" +
+            "}  \n" +
+            "#defaultTable td \n " +
+            "{  " +
+            "    font-size: 11px;  " +
+            "    padding: 0px;   " +
+            "    border-color: black;" +
+            "    border-style: solid;" +
+            "    border-width: 2px;" +
+            "} \n " +
+            "";
+
+    public static final String CELL_TEXT_CENTER = "text-align:center;";
 }

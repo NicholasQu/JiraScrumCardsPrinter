@@ -3,18 +3,14 @@ package cc.xiaoquer.jira.html;
 import cc.xiaoquer.jira.api.beans.JiraIssue;
 import cc.xiaoquer.jira.constant.FoldersConsts;
 import cc.xiaoquer.jira.constant.JiraColor;
-import cc.xiaoquer.jira.storage.PropertiesCache;
-import cc.xiaoquer.jira.utils.JSCPUtils;
+import cc.xiaoquer.utils.JSCPUtils;
 import j2html.tags.ContainerTag;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static j2html.TagCreator.*;
 
@@ -107,7 +103,7 @@ public class HtmlGenerator {
             head(
                 title("Jira看板打印 - v1.0"),
                 meta().attr("http-equiv", "Content-Type").attr("content", "text/html;charset=utf-8"),
-                style().withText(HtmlCss.COMMON).withText(HtmlCss.PAPER)
+                style().withText(HtmlCss.CARD_COMMON).withText(HtmlCss.PAPER)
                         .withText(HtmlCss.CARD_LIGHT).withText(HtmlCss.CARD_DARK)
 //                link().withRel("stylesheet").withHref("/css/main.css")
             ),

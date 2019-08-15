@@ -16,6 +16,7 @@ import java.util.Map;
  * Created by Nicholas on 2017/9/4.
  */
 @Data
+@NoArgsConstructor
 public class JiraBoard extends AbstractJiraEntity {
 
     private String boardId;
@@ -26,6 +27,11 @@ public class JiraBoard extends AbstractJiraEntity {
     @Setter(AccessLevel.NONE)
     private Map<String, JiraProject> projects = new LinkedHashMap<>();
     private boolean searched = false; //标识是否已查询过project
+
+
+    public JiraBoard(String boardId) {
+        this.boardId = boardId;
+    }
 
 //    {
 //        "maxResults":50,
