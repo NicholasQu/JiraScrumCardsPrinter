@@ -12,6 +12,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 import static j2html.TagCreator.*;
@@ -36,13 +38,41 @@ public class HtmlGenerator {
     private static final String PX_ONEROW_HEIGHT = "110px";
     private static final String PX_THREEROWS_HEIGHT = "280px";
 
-    private static final int A4_CARD_COLS = 2; //A4纸多少列
-    private static final int A4_CARD_ROWS = 3; //A4纸多少行
+    private static final String CIRCLE_OPACITY    = "0.8";  //小圆点的透明度，以防完全挡住背后的文字
 
-    public static final String TEMPLATE_CARD_TITLE   = "<p><u><div class=\"kanban_name\">{boardName}</div></u></p>" +
+    private static final int A4_CARD_COLS = 2; //A4纸多少列
+
+    private static final int A4_CARD_ROWS = 3; //A4纸多少行
+    private static final String TEMPLATE_CARD_TITLE   = "<p><u><div class=\"kanban_name\">{boardName}</div></u></p>" +
                                                      "<div class=\"parent_name\">[{parentType}][{parentKey}]: {parentName}</div>";
-    public static final String TEMPLATE_CARD_CONTENT = "<div class=\"issue_name\">[{issueType}][{issueKey}]: {issueName}</div>";
-    public static final String TEMPLATE_OWNER        = "<div class=\"owner_name\">{ownerName}</div>";
+    private static final String TEMPLATE_CARD_CONTENT = "<div class=\"issue_name\">[{issueType}][{issueKey}]: {issueName}</div>";
+    private static final String TEMPLATE_OWNER        = "<div class=\"owner_name\">{ownerName}</div>";
+    private static final String TEMPLATE_CIRCLE        =
+            "<div style=\"border-style:solid; border-color:black; border-width:1px; border-radius:50%; display: inline-block; " +
+            "   position:absolute;z-index:100;float:{float};top:{circletop}; left:{circleleft}; " +
+            "   background: {bgcolor}; opacity:{opacity}; height: {dimension}; width: {dimension}; \">  \n" +
+            "   <span style=\"display: block; color:{fontcolor}; font-size:{fontsize}; text-align: center; " +
+            "    height:{dimension}; line-height: {dimension};\"> " +
+            "       {content} " +
+            "   </span>" +
+            "</div>";
+
+    private static final String TEMPLATE_CIRCLE_PRIORITY = TEMPLATE_CIRCLE
+            .replaceAll("\\{float\\}",      "left")
+            .replaceAll("\\{dimension\\}",  "80px")
+            .replaceAll("\\{opacity\\}",    "0.8")
+            .replaceAll("\\{circletop\\}",  "10px")
+            .replaceAll("\\{circleleft}",   "10px");
+
+    private static final String TEMPLATE_CIRCLE_BLOOD = TEMPLATE_CIRCLE
+            .replaceAll("\\{float\\}",      "right")
+            .replaceAll("\\{dimension\\}",  "40px")
+            .replaceAll("\\{opacity\\}",    "0.8")
+            .replaceAll("\\{circletop\\}",  "10px")
+            .replaceAll("\\{circleleft}",   "445px");
+
+    //Key = P1, Value = {BackgroundColor, FontColor}
+    private static final Map<String, String[]> PRIORITY_COLORS = new HashMap<>();
 
     public static String generate(String boardName, String sprintName, Set<JiraIssue> issueSet) {
         boardName = boardName.replaceAll(" ", "");
@@ -95,7 +125,7 @@ public class HtmlGenerator {
             }
 
             pageNewLine.with(
-                td().with(renderSingleCard(jiraIssue, boardName, sprintName))
+                td().withStyle("position:relative").with(renderSingleCard(jiraIssue, boardName, sprintName))
             );
 
             i++;
@@ -120,20 +150,18 @@ public class HtmlGenerator {
     }
 
     private static ContainerTag renderSingleCard(JiraIssue jiraIssue, String boardName, String sprintName) {
-        String card_bgcolor = JiraColor.STORY.getHex(); //Story背景色
+        String card_bgcolor = PropertiesCache.getProp(PropertiesCache.P_COLOR_STORY_BG, JiraColor.STORY.getHex()); //Story背景色
 
         if (jiraIssue.isTask()){
-            card_bgcolor = JiraColor.TASK.getHex();
+            card_bgcolor = PropertiesCache.getProp(PropertiesCache.P_COLOR_TASK_BG, JiraColor.TASK.getHex());
         }
 
 //        JiraBoard jiraBoard = JIRA.getBoardCache(jiraIssue.getBoardId());
 //        String boardName = (jiraBoard == null ? "" : jiraBoard.getBoardName());
 
-        //增加血缘关系序号展示位，用于关联故事与子任务的关系
-        String bloodTemplate = "<br/><span style=\"border-radius: 50%; height: {height}; width: {width}; display: inline-block; background: {bgcolor}; vertical-align: top;\">  \n"
-                + " <span style=\"display: block; color: {fontcolor}; height: {height}; line-height: {width}; text-align: center\"> {content} </span></span>";
+        //增加优先级的圆形，图层向左上角浮动
 
-        String bloodCycleDimension = "40px";
+        //增加血缘关系序号展示位，图层向右上角浮动，用于关联故事与子任务的关系
         String bloodBgColor = "#e14fa6";
         String bloodFontColor = "#FFF";
         String bloodContent = "";
@@ -161,21 +189,38 @@ public class HtmlGenerator {
         if (bloodContent.length() == 4) {
             bloodFontSize = 15;
         } else if (bloodContent.length() > 4) {
-            bloodFontSize = 12;
+            bloodFontSize = 11;
+        } else if (bloodContent.length() > 6) {
+            bloodFontSize = 9;
         }
 
-        ContainerTag bloodTD = td().attr("style", "border-top:0px none #000;font-size:" + bloodFontSize + "px;")
-                .attr("bgcolor", "#FFF")
-                .attr("rowspan", "4")
-                .attr("valign", "top")
-                .withText(
-                    bloodTemplate
-                        .replaceAll("\\{height\\}", bloodCycleDimension)
-                        .replaceAll("\\{width\\}", bloodCycleDimension)
-                        .replaceAll("\\{bgcolor\\}", bloodBgColor)
-                        .replaceAll("\\{fontcolor\\}", bloodFontColor)
-                        .replaceAll("\\{content\\}", bloodContent));
+//        ContainerTag bloodTD = td().attr("style", "border-top:0px none #000;font-size:" + bloodFontSize + "px;")
+//                .attr("bgcolor", "#FFF")
+//                .attr("rowspan", "4")
+//                .attr("valign", "top")
+//                .withText(
+//                    TEMPLATE_CIRCLE_BLOOD
+//                        .replaceAll("\\{bgcolor\\}", bloodBgColor)
+//                        .replaceAll("\\{fontcolor\\}", bloodFontColor)
+//                        .replaceAll("\\{content\\}", bloodContent));
+
+        String bloodDiv = TEMPLATE_CIRCLE_BLOOD
+                .replaceAll("\\{bgcolor\\}",    bloodBgColor)
+                .replaceAll("\\{fontcolor\\}",  bloodFontColor)
+                .replaceAll("\\{fontsize\\}",   String.valueOf(bloodFontSize))
+                .replaceAll("\\{content\\}",    bloodContent);
         //BLOOD展示位构建完毕................................................
+
+
+        String issuePriority = jiraIssue.getPriority();
+        String priorityDiv = "";
+        if (StringUtils.isNotBlank(issuePriority)) {
+            priorityDiv = TEMPLATE_CIRCLE_PRIORITY
+                    .replaceAll("\\{bgcolor\\}", getPriorityColor(issuePriority, true))
+                    .replaceAll("\\{fontcolor\\}", getPriorityColor(issuePriority, false))
+                    .replaceAll("\\{fontsize\\}", "20")
+                    .replaceAll("\\{content\\}", issuePriority);
+        }
 
 
         //标题的缩略长度，需要减去类型和key的长度，尽量精确吧。
@@ -185,15 +230,13 @@ public class HtmlGenerator {
         ContainerTag cardTable = table().withId(cardIdCss)
                 .attr("bgcolor", card_bgcolor)
                 .with(
-                thead(
+                 thead(
                         tr(
-                                th().attr("scope","col").attr("width", "10%"),
-                                th().attr("scope","col").attr("width", "65%"),
+                                th().attr("scope","col").attr("width", "70%"),
                                 th().attr("scope","col").attr("width", "30%")
                         )
                 ),
                 tr(
-                        bloodTD,
                         td().attr("colspan","2")
                             .attr("height", PX_TITLE_HEIGHT)
                             .attr("align", "center")
@@ -249,11 +292,47 @@ public class HtmlGenerator {
                 )
             );
         }
-        return cardTable;
+
+        return div()
+                //添加优先级的浮层在左上角，血缘ID的浮层在右上角
+                .withText(priorityDiv)
+                .withText(bloodDiv)
+                .with(cardTable);
+    }
+
+    //获取优先级的颜色
+    private static String getPriorityColor(String priority, boolean isBackground) {
+        //初始化获取配置属性
+        if (PRIORITY_COLORS == null || PRIORITY_COLORS.isEmpty()) {
+            String priorityKeys = PropertiesCache.getProp(PropertiesCache.P_COLOR_PRIORITY_KEY);
+            String priorityBgColors = PropertiesCache.getProp(PropertiesCache.P_COLOR_PRIORITY_BG);
+            String priorityFontColors = PropertiesCache.getProp(PropertiesCache.P_COLOR_PRIORITY_FONT);
+
+            String[] priorityKeyArr = StringUtils.split(priorityKeys, ",");
+            String[] priorityBgColorArr = StringUtils.split(priorityBgColors, ",");
+            String[] priorityFontColorArr = StringUtils.split(priorityFontColors, ",");
+
+            if (priorityKeyArr.length != priorityBgColorArr.length || priorityKeyArr.length != priorityFontColorArr.length) {
+                return isBackground ? "#FFF" : "000";
+            }
+
+            for (int i = 0; i < priorityKeyArr.length; i++) {
+                PRIORITY_COLORS.put(StringUtils.trim(priorityKeyArr[i]), new String[]{priorityBgColorArr[i], priorityFontColorArr[i]});
+            }
+        }
+
+        String[] colors = PRIORITY_COLORS.get(priority);
+        if (colors!=null) {
+            return isBackground ? colors[0] : colors[1];
+        }
+
+        return isBackground ? "#FFF" : "000";
     }
 
     private static String lenStr4Test="US5-3_【AAAA】用户在么么钱包申请现金贷获得放款后，可通过支付宝、银行转账等线下还款方式进行还款，这样用户可以线下完成主动还款【海尔云贷现金贷项目】用户在么么钱包申请现金贷获得放款后，可通过支付宝、银行转账等线下还款方式进行还款，这样用户可以线下完成主动还款";
     public static void main(String[] args) {
 //        generate("ETS", "0915", null);
+
+        System.out.println(TEMPLATE_CIRCLE_PRIORITY);
     }
 }

@@ -56,6 +56,13 @@ public class PropertiesCache {
     public static final String P_CARD_STORY_ABBR_LEN    = "card.story.abbr.length";
     public static final String P_CARD_ISSUE_ABBR_LEN    = "card.issue.abbr.length";
 
+    public static final String P_COLOR_STORY_BG         = "card.color.story.bg";
+    public static final String P_COLOR_TASK_BG          = "card.color.task.bg";
+    public static final String P_COLOR_SUBTASK_BG       = "card.color.subtask.bg";
+    public static final String P_COLOR_PRIORITY_KEY     = "card.color.priority.key";    //P0; P1; P2; P3
+    public static final String P_COLOR_PRIORITY_BG      = "card.color.priority.bg";     //#FFF; #000; #FF0400;
+    public static final String P_COLOR_PRIORITY_FONT    = "card.color.priority.font";   //#000; #000; #000
+
     private static final String KEY = System.getProperty("java.version");
 
     private static final Properties configProp = new OrderedProperties();
@@ -111,6 +118,13 @@ public class PropertiesCache {
         configProp.put(P_CARD_TITLE_ABBR_LEN, "85");
         configProp.put(P_CARD_STORY_ABBR_LEN, "160");
         configProp.put(P_CARD_ISSUE_ABBR_LEN, "140");
+
+        configProp.put("#COLORS","#");
+        configProp.put(P_COLOR_STORY_BG, "#FFFF00");
+        configProp.put(P_COLOR_TASK_BG,  "#808000");
+        configProp.put(P_COLOR_PRIORITY_KEY,  "P0,P1,P2,P3");
+        configProp.put(P_COLOR_PRIORITY_BG,   "#DC143C,#8A2BE2,#f79232,#707070");
+        configProp.put(P_COLOR_PRIORITY_FONT, "#FFFFFF,#FFFFFF,#000000,#000000");
 
         configProp.put("#OTHERS","#");
 
@@ -216,6 +230,10 @@ public class PropertiesCache {
     }
 
     public static String getProp(String key) {
+        return getProp(key, "");
+    }
+
+    public static String getProp(String key, String ifNullValue) {
         String value = System.getenv(key);
         if (value == null) {
             value = System.getProperty(key);
@@ -223,7 +241,8 @@ public class PropertiesCache {
         if (value == null) {
             value = (String) configProp.get(key);
         }
-        return value;
+
+        return value == null ? ifNullValue : value;
     }
 
     public static String getUpdateUrl() {
