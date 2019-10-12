@@ -180,6 +180,11 @@ public enum JiraColor {
     }
 
     public static boolean isColorDark(String hexColor){
+        Colors configColor = Colors.toColor(hexColor);
+        if (configColor!=null) {
+            return configColor.dark == 1;
+        }
+
         String r = hexColor.substring(1, 3);
         String g = hexColor.substring(3, 5);
         String b = hexColor.substring(5, 7);
@@ -312,19 +317,21 @@ public enum JiraColor {
     }
 
     public static void main(String[] args) {
-        System.out.println(getColorDiff("#FFB6C1", "#FFC0CB"));
-        System.out.println(getColorDiff("#FFB6C1", "#DC143C"));
-        System.out.println(getColorDiff("#FFC0CB", "#DC143C"));
+        System.out.println(JiraColor.isColorDark("#0000FF"));
 
-        System.out.println("----------------------------");
-
-        System.out.println(getColorDiff("#FFB6C1", "#EE82EE"));
-        System.out.println(getColorDiff("#FFB6C1", "#4B0082"));
-
-        System.out.println("----------------------------");
-        System.out.println(getColorDiff("#ADFF2F", "#98FB98"));
-        System.out.println(getColorDiff("#E1FFFF", "#F0F8FF"));
-
+//        System.out.println(getColorDiff("#FFB6C1", "#FFC0CB"));
+//        System.out.println(getColorDiff("#FFB6C1", "#DC143C"));
+//        System.out.println(getColorDiff("#FFC0CB", "#DC143C"));
+//
+//        System.out.println("----------------------------");
+//
+//        System.out.println(getColorDiff("#FFB6C1", "#EE82EE"));
+//        System.out.println(getColorDiff("#FFB6C1", "#4B0082"));
+//
+//        System.out.println("----------------------------");
+//        System.out.println(getColorDiff("#ADFF2F", "#98FB98"));
+//        System.out.println(getColorDiff("#E1FFFF", "#F0F8FF"));
+//
 
     }
     /**
@@ -346,7 +353,7 @@ public enum JiraColor {
         COLOR_MAGENTA ("#FF00FF","洋红"),
 //        COLOR_FUCHSIA ("#FF00FF","灯笼海棠(紫红色)"),
 //        COLOR_DARKMAGENTA ("#8B008B","深洋红色"),
-        COLOR_PURPLE ("#800080","紫色"),
+        COLOR_PURPLE ("#800080","紫色", 1),
         COLOR_MEDIUMORCHID ("#BA55D3","适中的兰花紫"),
 //        COLOR_DARKVOILET ("#9400D3","深紫罗兰色"),
 //        COLOR_DARKORCHID ("#9932CC","深兰花紫"),
@@ -358,11 +365,11 @@ public enum JiraColor {
 //        COLOR_DARKSLATEBLUE ("#483D8B","深岩暗蓝灰色"),
         COLOR_LAVENDER ("#E6E6FA","熏衣草花的淡紫色"),
         COLOR_GHOSTWHITE ("#F8F8FF","幽灵的白色"),
-        COLOR_BLUE ("#0000FF","纯蓝"),
+        COLOR_BLUE ("#0000FF","纯蓝", 1),
         COLOR_MEDIUMBLUE ("#0000CD","适中的蓝色"),
 //        COLOR_MIDNIGHTBLUE ("#191970","午夜的蓝色"),
 //        COLOR_DARKBLUE ("#00008B","深蓝色"),
-        COLOR_NAVY ("#000080","海军蓝"),
+        COLOR_NAVY ("#000080","海军蓝", 1),
         COLOR_ROYALBLUE ("#4169E1","皇军蓝"),
         COLOR_CORNFLOWERBLUE ("#6495ED","矢车菊的蓝色"),
         COLOR_LIGHTSTEELBLUE ("#B0C4DE","淡钢蓝"),
@@ -439,7 +446,7 @@ public enum JiraColor {
         COLOR_PEACHPUFF ("#FFDAB9","桃色"),
         COLOR_SANDYBROWN ("#F4A460","沙棕色"),
         COLOR_CHOCOLATE ("#D2691E","巧克力"),
-        COLOR_SADDLEBROWN ("#8B4513","马鞍棕色"),
+        COLOR_SADDLEBROWN ("#8B4513","马鞍棕色", 1),
         COLOR_SEASHELL ("#FFF5EE","海贝壳"),
         COLOR_SIENNA ("#A0522D","黄土赭色"),
         COLOR_LIGHTSALMON ("#FFA07A","浅鲜肉(鲑鱼)色"),
@@ -470,11 +477,26 @@ public enum JiraColor {
         ;
 
         private String hex;
+        private int    dark;
         private String desc;
 
         private Colors(String hex, String desc) {
             this.hex = hex;
             this.desc = desc;
+        }
+        private Colors(String hex, String desc, int dark) {
+            this.hex = hex;
+            this.desc = desc;
+            this.dark = dark;
+        }
+
+        public static Colors toColor(String hex) {
+            for (Colors colors : Colors.values()) {
+                if (colors.hex.equals(hex)) {
+                    return colors;
+                }
+            }
+            return null;
         }
     }
 }

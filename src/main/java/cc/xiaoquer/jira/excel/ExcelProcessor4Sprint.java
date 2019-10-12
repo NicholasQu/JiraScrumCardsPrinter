@@ -387,7 +387,7 @@ public class ExcelProcessor4Sprint {
         linkCell.setHyperlink(link);
 
         row.createCell(columnIdx++).setCellValue(issue.getIssueName());
-        row.createCell(columnIdx++).setCellValue(issue.getIssueStatus());
+        row.createCell(columnIdx++).setCellValue(issue.getIssueStatus()); COL_IDX_STATUS = columnIdx - 1;
 
         row.createCell(columnIdx++).setCellValue(issue.getOwner());
         if (StringUtils.isNotBlank(issue.getOwner())) {
@@ -726,47 +726,53 @@ public class ExcelProcessor4Sprint {
             }
         }
 
-        //Team分组
-        for (int i = 0; i < TEAM_GROUP_START_ROW.size(); i++) {
-            int groupStart = TEAM_GROUP_START_ROW.get(i);
-            int groupEnd  = 0;
-            if (i + 1 >= TEAM_GROUP_START_ROW.size()) {
-                groupEnd = rowCount;
-            } else {
-                groupEnd = TEAM_GROUP_START_ROW.get(i + 1) - 1;
-            }
+        //合并分组功能报错，无视。
+        try {
+            //Team分组
+            for (int i = 0; i < TEAM_GROUP_START_ROW.size(); i++) {
+                int groupStart = TEAM_GROUP_START_ROW.get(i);
+                int groupEnd  = 0;
+                if (i + 1 >= TEAM_GROUP_START_ROW.size()) {
+                    groupEnd = rowCount;
+                } else {
+                    groupEnd = TEAM_GROUP_START_ROW.get(i + 1) - 1;
+                }
 
-            if (groupStart < groupEnd) {
-                sheet.groupRow(groupStart + 1, groupEnd);       //Otherwise group会粘连
-            }
-
-            try {
-                CellRangeAddress region = new CellRangeAddress(groupStart, groupEnd, COL_IDX_TEAM, COL_IDX_TEAM);
-                sheet.addMergedRegion(region);
+                if (groupStart < groupEnd) {
+                    sheet.groupRow(groupStart + 1, groupEnd);       //Otherwise group会粘连
+                }
+                //多于1行的合并才有意义
+                if (groupStart < groupEnd) {
+                    CellRangeAddress region = new CellRangeAddress(groupStart, groupEnd, COL_IDX_TEAM, COL_IDX_TEAM);
+                    sheet.addMergedRegion(region);
+                }
 
                 HSSFRow regionRow = sheet.getRow(groupStart);
-                HSSFCell regionCell = regionRow.getCell(COL_IDX_TEAM);
-                regionCell.setCellStyle(teamStyle);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            //HSSFRegionUtil;
-            //RegionUtil
-            //HSSFRegionUtil
-        }
+                if (regionRow != null) {
+                    HSSFCell regionCell = regionRow.getCell(COL_IDX_TEAM);
+                    regionCell.setCellStyle(teamStyle);
+                }
 
-        //Story分组
-        for (int i = 0; i < STORY_GROUP_START_ROW.size(); i++) {
-            int groupStart = STORY_GROUP_START_ROW.get(i);
-            int groupEnd  = 0;
-            if (i + 1 >= STORY_GROUP_START_ROW.size()) {
-                groupEnd = rowCount;
-            } else {
-                groupEnd = STORY_GROUP_START_ROW.get(i + 1) - 1;
+                //HSSFRegionUtil;
+                //RegionUtil
+                //HSSFRegionUtil
             }
-            if (groupStart < groupEnd) {
-                sheet.groupRow(groupStart + 1, groupEnd);
+
+            //Story分组
+            for (int i = 0; i < STORY_GROUP_START_ROW.size(); i++) {
+                int groupStart = STORY_GROUP_START_ROW.get(i);
+                int groupEnd  = 0;
+                if (i + 1 >= STORY_GROUP_START_ROW.size()) {
+                    groupEnd = rowCount;
+                } else {
+                    groupEnd = STORY_GROUP_START_ROW.get(i + 1) - 1;
+                }
+                if (groupStart < groupEnd) {
+                    sheet.groupRow(groupStart + 1, groupEnd);
+                }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 

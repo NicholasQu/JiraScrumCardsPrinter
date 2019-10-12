@@ -7,6 +7,7 @@ import com.alibaba.fastjson.JSONObject;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.commons.codec.binary.StringUtils;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -113,7 +114,7 @@ public class JiraSprint extends AbstractJiraEntity {
 
     public void setJSONObject(JSONObject sprintJo) {
         String id = sprintJo.getString("id");
-        if (this.sprintId != null && this.sprintId.equals(id)) {
+        if (StringUtils.equals(this.sprintId, id)) {
             throw new RuntimeException("已有ID "+this.sprintId+ " 与 " + id + " 不一致");
         }
 

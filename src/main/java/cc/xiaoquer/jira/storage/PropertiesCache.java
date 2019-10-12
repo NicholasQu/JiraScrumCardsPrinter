@@ -1,6 +1,7 @@
 package cc.xiaoquer.jira.storage;
 
 import cc.xiaoquer.jira.constant.FoldersConsts;
+import cc.xiaoquer.jira.html.HtmlCss;
 import cc.xiaoquer.utils.JSCPUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -28,6 +29,7 @@ public class PropertiesCache {
     public static final String P_JIRA_CUSTOM_FIELD_KEYS  = "jira.customfield.keys";
     public static final String P_JIRA_CUSTOM_FIELD_NAMES = "jira.customfield.names";
 
+
     public static final String P_ISSUE_STATUS_CATEGORY_3KEYS = "issue.status.category.3keys";
 
 
@@ -38,31 +40,80 @@ public class PropertiesCache {
     public static final String P_SMB_SHARE_ROOT = "smb.share.root";
     public static final String P_SMB_SHARE_PATH = "smb.share.path";
     public static final String P_WEBSERVER_URL = "webserver.url";
+    public static final String ISSUE_CUSTOMFIELD_PREFIX = "issue.customfield.";
+
+    public static final String P_ISSUE_CUSTOM_PRIORITY     = ISSUE_CUSTOMFIELD_PREFIX + "priority";
+    public static final String P_ISSUE_CUSTOM_ESTIMATEDONE = ISSUE_CUSTOMFIELD_PREFIX + "estimatedone";
+    public static final String P_ISSUE_CUSTOM_ACTUAL_DONE  = ISSUE_CUSTOMFIELD_PREFIX + "actualdone";
+    public static final String P_ISSUE_CUSTOM_REVENUEINFO  = ISSUE_CUSTOMFIELD_PREFIX + "revenueinfo";
+    public static final String P_ISSUE_CUSTOM_TOTALWORKING = ISSUE_CUSTOMFIELD_PREFIX + "totalworking";
+    public static final String P_WORKING_TO_COST = "working.to.cost.rate";
+
+
+    public static final String P_CARD_TITLE_FONT_SIZE   = "card.title.font.size";
+    public static final String P_CARD_ISSUE_FONT_SIZE   = "card.issue.font.size";
+    public static final String P_CARD_TITLE_ABBR_LEN    = "card.title.abbr.length";
+    public static final String P_CARD_STORY_ABBR_LEN    = "card.story.abbr.length";
+    public static final String P_CARD_ISSUE_ABBR_LEN    = "card.issue.abbr.length";
 
     private static final String KEY = System.getProperty("java.version");
 
     private static final Properties configProp = new OrderedProperties();
-    private static Properties baselineProp = new OrderedProperties();
+
+    private static final Map<String, String> modifiedMap = new LinkedHashMap<>();
 
     private PropertiesCache() {
     }
 
     static {
         configProp.put("JSCP_OWNER","nicholas.qu");
+
+        configProp.put("#JIRA_LOGIN","#");
         configProp.put(P_BOARD_FILTER,"");
         configProp.put(P_HOST,"");
         configProp.put(P_USER,"");
         configProp.put(P_PWD,"");
+
+        configProp.put("#JIRA_New_Feature","#");
         //New Features
         configProp.put(P_COLORFUL, "1");
         configProp.put(P_SHOWALLCOLS, "0");
         configProp.put(P_CUSTOM_FIELD_KEYS, "fields>customfield_11001");
         configProp.put(P_CUSTOM_FIELD_NAMES, "实际耗费时间");
-        configProp.put(P_CUSTOM_FIELD_KEYS, "customfield_11400");
-        configProp.put(P_CUSTOM_FIELD_NAMES, "epicPriority");
+        configProp.put(P_JIRA_CUSTOM_FIELD_KEYS, "customfield_11400");
+        configProp.put(P_JIRA_CUSTOM_FIELD_NAMES, "epicPriority");
         configProp.put(P_UPDATE_URL, "");
 
+        configProp.put("#SMB","#");
+
+        configProp.put(P_SMB_DOMAIN, "");
+        configProp.put(P_SMB_USER, "");
+        configProp.put(P_SMB_PASSWORD, "");
+        configProp.put(P_SMB_LOGIN_DOMAIN, "");
+        configProp.put(P_SMB_SHARE_ROOT, "");
+        configProp.put(P_SMB_SHARE_PATH, "");
+        configProp.put(P_WEBSERVER_URL, "");
+
+        configProp.put("#CUSTOM_FIELDS","#");
+
         configProp.put(P_ISSUE_STATUS_CATEGORY_3KEYS, "new,indeterminate,done");
+
+        configProp.put(P_ISSUE_CUSTOM_PRIORITY, "fields>customfield_11500");
+        configProp.put(P_ISSUE_CUSTOM_ESTIMATEDONE, "fields>customfield_11603");
+        configProp.put(P_ISSUE_CUSTOM_ACTUAL_DONE, "fields>customfield_11602");
+        configProp.put(P_ISSUE_CUSTOM_REVENUEINFO, "fields>customfield_11600");
+        configProp.put(P_ISSUE_CUSTOM_TOTALWORKING, "fields>customfield_11501");
+        configProp.put(P_WORKING_TO_COST, "0.16091954");
+
+        configProp.put("#FONT_SIZE","#");
+        configProp.put(P_CARD_TITLE_FONT_SIZE, "16");
+        configProp.put(P_CARD_ISSUE_FONT_SIZE, "24");
+        configProp.put(P_CARD_TITLE_ABBR_LEN, "85");
+        configProp.put(P_CARD_STORY_ABBR_LEN, "160");
+        configProp.put(P_CARD_ISSUE_ABBR_LEN, "140");
+
+        configProp.put("#OTHERS","#");
+
         read();
     }
 
@@ -90,12 +141,10 @@ public class PropertiesCache {
             properties.load(reader);
             int hashCode2 = properties.hashCode();
             if (hashCode1 != hashCode2) {
-                baselineProp.clear();
+                modifiedMap.clear();
                 configProp.putAll(properties);
                 flush();
             }
-
-            baselineProp.putAll(configProp);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -103,11 +152,13 @@ public class PropertiesCache {
             e.printStackTrace();
         }
 
+        notifyUpdates();
+
         return configProp;
     }
 
     public static void flush() {
-        if (baselineProp.hashCode() == configProp.hashCode()) {
+        if (modifiedMap.size() == 0) {
             return;
         }
 
@@ -121,27 +172,30 @@ public class PropertiesCache {
         FileWriter writer = null;
         try {
             writer = new FileWriter(configFile);
+            configProp.putAll(modifiedMap);
             configProp.store(writer, "Jira Card Printer Cache");
-            baselineProp.putAll(configProp);
+            modifiedMap.clear();
+
+            notifyUpdates();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     public static void setHost(String value) {
-        configProp.put(P_HOST, value);
+        modifiedMap.put(P_HOST, value);
     }
 
     public static void setUserName(String value) {
-        configProp.put(P_USER, value);
+        modifiedMap.put(P_USER, value);
     }
 
     public static void setPassword(String value) {
-        configProp.put(P_PWD, JSCPUtils.encrypt(value, KEY));
+        modifiedMap.put(P_PWD, JSCPUtils.encrypt(value, KEY));
     }
 
     public static void setBoardFilter(String value) {
-        configProp.put(P_BOARD_FILTER, value);
+        modifiedMap.put(P_BOARD_FILTER, value);
     }
 
     public static String getHost() {
@@ -176,7 +230,7 @@ public class PropertiesCache {
         return getProp(P_UPDATE_URL);
     }
     public static void setProp(String key, String value) {
-        configProp.put(key, value);
+        modifiedMap.put(key, value);
     }
 
     public static Map<String, String> getJiraCustomFields() {
@@ -202,4 +256,10 @@ public class PropertiesCache {
 
         return jiraCustomFieldMap;
     }
+
+    public static void notifyUpdates() {
+        //通知css更新
+        HtmlCss.notifyCssUpdate();
+    }
+
 }

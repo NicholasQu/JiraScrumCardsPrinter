@@ -388,7 +388,6 @@ new FormModel {
 							"preferredSize": new java.awt.Dimension( 121, 10 )
 							"minimumSize": new java.awt.Dimension( 121, 25 )
 							"maximumSize": new java.awt.Dimension( 121, 30 )
-							"background": sfield java.awt.SystemColor textHighlight
 							"font": new java.awt.Font( "Lucida Grande", 1, 12 )
 							"enabled": false
 							addEvent( new FormEvent( "java.awt.event.MouseListener", "mouseClicked", "btnGenerateMouseClicked", true ) )

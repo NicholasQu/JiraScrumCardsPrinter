@@ -1733,7 +1733,6 @@ public class JiraCardPrinterFrame {
                         btnGenerate.setPreferredSize(new Dimension(121, 10));
                         btnGenerate.setMinimumSize(new Dimension(121, 25));
                         btnGenerate.setMaximumSize(new Dimension(121, 30));
-                        btnGenerate.setBackground(SystemColor.textHighlight);
                         btnGenerate.setFont(new Font("Lucida Grande", Font.BOLD, 12));
                         btnGenerate.setEnabled(false);
                         btnGenerate.addMouseListener(new MouseAdapter() {

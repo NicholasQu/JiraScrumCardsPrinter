@@ -18,7 +18,6 @@ import java.util.Map;
 public abstract class AbstractJiraEntity implements Serializable {
     protected SimpleDateFormat jiraDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSz");
     protected SimpleDateFormat defaultDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-    protected static final String ISSUE_CUSTOMFIELD_PREFIX = "issue.customfield.";
 
     protected static final DecimalFormat NUM_FORMAT_2D = new DecimalFormat("#.##");
     protected static final DecimalFormat NUM_FORMAT_INT = new DecimalFormat("#");
@@ -83,11 +82,11 @@ public abstract class AbstractJiraEntity implements Serializable {
     }
 
     protected String getCustomField(String key) {
-        return StringUtils.defaultIfBlank(customFields.get(PropertiesCache.getProp(ISSUE_CUSTOMFIELD_PREFIX + key)),"");
+        return StringUtils.defaultIfBlank(customFields.get(PropertiesCache.getProp(PropertiesCache.ISSUE_CUSTOMFIELD_PREFIX + key)),"");
     }
 
     //工时（人天）转为成本（万元）的系数 3.5万元/21.75
     protected BigDecimal getWorkingToCostRate() {
-        return new BigDecimal(StringUtils.defaultIfBlank(PropertiesCache.getProp("working.to.cost.rate"), "0.16091954"));
+        return new BigDecimal(StringUtils.defaultIfBlank(PropertiesCache.getProp(PropertiesCache.P_WORKING_TO_COST), "0.16091954"));
     }
 }

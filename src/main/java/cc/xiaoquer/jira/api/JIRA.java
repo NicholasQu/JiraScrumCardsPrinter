@@ -4,6 +4,7 @@ import cc.xiaoquer.jira.api.beans.*;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONException;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.asynchttpclient.*;
@@ -26,9 +27,9 @@ public class JIRA {
     //JQL : https://confluence.atlassian.com/jirasoftwarecloud/advanced-searching-764478330.html
     //JQL Fields : https://confluence.atlassian.com/jirasoftwarecloud/advanced-searching-fields-reference-764478339.html
     //该api默认最大返回50条记录，所以maxResult不能大于50，且只能分页查询。
-    public static final String AGILE_BOARDS_URL  = "/rest/agile/1.0/board?type=scrum&startAt={start}&maxResults=50";
-    public static final String AGILE_BOARD_PROJECT_URL = "/rest/agile/1.0/board/{boardId}/project?startAt=0&maxResults=50";
-    public static final String AGILE_SPRINTS_URL = "/rest/agile/1.0/board/{boardId}/sprint?startAt={start}&maxResults=50";
+    public static final String AGILE_BOARDS_URL  = "/rest/agile/1.0/board?type=scrum&startAt={start}&maxResults={max}";
+    public static final String AGILE_BOARD_PROJECT_URL = "/rest/agile/1.0/board/{boardId}/project?startAt={start}&&maxResults={max}";
+    public static final String AGILE_SPRINTS_URL = "/rest/agile/1.0/board/{boardId}/sprint?startAt={start}&maxResults={max}";
     public static final String AGILE_EPICS_URL = "/rest/agile/1.0/board/{boardId}/epic?startAt={start}&maxResults={max}";
     public static final String AGILE_ISSUES_IN_EPIC_URL = "/rest/agile/1.0/board/{boardId}/epic/{epicId}/issue?startAt={start}&maxResults={max}";
     public static final String AGILE_BACKLOG_IN_BOARD_URL = "/rest/agile/1.0/board/{boardId}/backlog?startAt={start}&maxResults={max}";
@@ -63,6 +64,9 @@ public class JIRA {
      * Key=BoardId, Value=JiraBoard
      */
     public static Map<String, JiraBoard> ALL_BOARD_MAP = new TreeMap<>();
+
+    public static Map<String, Map<String, JiraProject>> BOARD_PROJECT_MAP = new LinkedHashMap<>();
+
 //    private static Vector<String> boardNames;
     /**
      * Key=BoardId, Value=Map<String, JiraSprint>
@@ -181,7 +185,9 @@ public class JIRA {
     public static Map<String, JiraBoard> getBoardMap(boolean forceRefresh) {
         if (forceRefresh) {
             for (int i = 0; ; i = i + PAGE_SIZE) {
-                String responseBody = getResponse(serverUrl + AGILE_BOARDS_URL.replace("{start}", String.valueOf(i)));
+                String responseBody = getResponse(serverUrl + AGILE_BOARDS_URL
+                        .replace("{start}", String.valueOf(i))
+                        .replace("{max}", String.valueOf(PAGE_SIZE)));
                 JiraBoard.toMap(responseBody, null);
 
                 boolean isLast = JSON.parseObject(responseBody).getBoolean("isLast");
@@ -200,8 +206,19 @@ public class JIRA {
     }
 
     public static Map<String, JiraProject> getProjectMap(String boardId) {
-        String projectJoStr = JIRA.getResponseRelative(JIRA.AGILE_BOARD_PROJECT_URL.replace("{boardId}", boardId));
-        return JiraProject.toMap(projectJoStr);
+        Map<String, JiraProject> projectMap = BOARD_PROJECT_MAP.get(boardId);
+
+        if (projectMap == null || projectMap.size() == 0) {
+            String projectJoStr = JIRA.getResponseRelative(JIRA.AGILE_BOARD_PROJECT_URL
+                    .replace("{boardId}", boardId)
+                    .replace("{start}", "0")
+                    .replace("{max}", "50"));
+            projectMap = JiraProject.toMap(projectJoStr);
+
+            BOARD_PROJECT_MAP.put(boardId, projectMap);
+        }
+
+        return projectMap;
     }
 
     public static Map<String, JiraSprint> getSprintMap(String boardId) {
@@ -211,7 +228,9 @@ public class JIRA {
 
         for (int i = 0;; i = i + PAGE_SIZE) {
             String responseBody = getResponse(serverUrl + AGILE_SPRINTS_URL
-                    .replace("{boardId}", boardId).replace("{start}", String.valueOf(i)));
+                    .replace("{boardId}", boardId)
+                    .replace("{start}", String.valueOf(i))
+                    .replace("{max}", String.valueOf(PAGE_SIZE)));
 
             JiraSprint.toMap(responseBody, boardId);
 
@@ -227,21 +246,24 @@ public class JIRA {
     }
 
     public static Map<String, JiraIssue> getBacklog(String boardId) {
-        int issuePageSize = PAGE_SIZE;
-        int total = 0;
+        int issuePageSize = PAGE_SIZE * 2;
 
         String sprintId = "";
         String url = serverUrl + AGILE_BACKLOG_IN_BOARD_URL
                 .replace("{boardId}", boardId);
 
         boolean isEnd = false;
+
+        int start = 0;
         while ( !isEnd ) {
-            Pair<String, Boolean> responsePair = _getPaginationResponse(url, 0, issuePageSize);
+            Pair<String, Boolean> responsePair = _getPaginationResponse(url, start, issuePageSize);
 
             String responseBody = responsePair.getLeft();
             isEnd = responsePair.getRight();
 
             JiraIssue.toMap(responseBody, boardId, sprintId);
+
+            start+=issuePageSize;
         }
 
         //把子任务解析到story或者任务的类属性里
@@ -420,7 +442,15 @@ public class JIRA {
 
     public static Map<String, JiraIssue> getStoryOrTaskMap(String boardId, String sprintId) {
         String key = boardId + "," + sprintId;
-        return BOARD_SPRINT_PARENT_MAP.get(key);
+        Map<String, JiraIssue> localIssueMap = BOARD_SPRINT_PARENT_MAP.get(key);
+
+        //看板迭代不存在issue, 放入空map，防止NPE
+        if (localIssueMap == null) {
+            localIssueMap = new LinkedHashMap<>();
+            BOARD_SPRINT_PARENT_MAP.put(key, localIssueMap);
+        }
+
+        return localIssueMap;
     }
 
 

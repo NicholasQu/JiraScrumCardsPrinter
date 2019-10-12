@@ -1,15 +1,17 @@
 package cc.xiaoquer.jira.html;
 
+import cc.xiaoquer.jira.storage.PropertiesCache;
+
 /**
  * Created by Nicholas on 2017/9/6.
  */
 public class HtmlCss {
-    public static final String CARD_COMMON = "\n" +
+    public static String CARD_COMMON = "\n" +
             " body  { margin: 0; font-family: Arial, Helvetica, sans-serif; font-size:18px; } \n" +
             " .kanban_name {font-style:italic;} \n" +
-            " .parent_name {font-style:bold;} \n" +
-            " .issue_name {font-style:bold; font-size:26px} \n" +
-            " .owner_name {font-style:bold; font-size:26px} \n" +
+            " .parent_name {font-style:bold; font-size:@P_CARD_TITLE_FONT_SIZE@px} \n" +
+            " .issue_name {font-style:bold; font-size:@P_CARD_ISSUE_FONT_SIZE@px} \n" +
+            " .owner_name {font-style:bold; font-size:@P_CARD_ISSUE_FONT_SIZE@px} \n" +
 //            " table { page-break-inside:auto } \n" +
 //            " tr    { page-break-inside:avoid; page-break-after:auto } \n" +
 //            " td    { page-break-inside:avoid; page-break-after:auto } \n" +
@@ -18,12 +20,17 @@ public class HtmlCss {
 //            " tbody { display: block; page-break-after: always; page-break-before: avoid; page-break-inside:avoid; } \n" +
             " \n";
 
+    public static void notifyCssUpdate() {
+        CARD_COMMON = CARD_COMMON
+                .replaceAll("@P_CARD_TITLE_FONT_SIZE@", PropertiesCache.getProp(PropertiesCache.P_CARD_TITLE_FONT_SIZE))
+                .replaceAll("@P_CARD_ISSUE_FONT_SIZE@", PropertiesCache.getProp(PropertiesCache.P_CARD_ISSUE_FONT_SIZE));
+    }
 
     public static final String CARD = "\n" +
             "#cardview  \n" +
             "{  " +
             "    font-family: Lucida Sans Unicode, Lucida Grande, Sans-Serif;  " +
-            "    font-size: 18px;  " +
+//            "    font-size: 18px;  " +
 //            "    margin: 10px;  " +
             "    width: 500px;  " +
             "    color: @COLOR_ON_BACKGROUND@;  " +
@@ -43,7 +50,7 @@ public class HtmlCss {
             "}  \n" +
             "#cardview th  \n" +
             "{  " +
-            "    font-size: 18px;  " +
+//            "    font-size: 18px;  " +
             "    font-weight: normal;  " +
             "    padding: 0px;  " +
 //            "    border-bottom: 2px solid #fff;  " +
@@ -54,7 +61,7 @@ public class HtmlCss {
             "}  \n" +
             "#cardview td \n " +
             "{  " +
-            "    font-size: 18px;  " +
+//            "    font-size: 18px;  " +
             "    padding: 0px;   " +
 //            "    border-bottom: 1px solid #fff;  " +
             "    color: ;  " +
