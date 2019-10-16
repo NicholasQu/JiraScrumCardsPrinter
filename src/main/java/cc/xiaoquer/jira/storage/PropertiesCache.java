@@ -40,15 +40,15 @@ public class PropertiesCache {
     public static final String P_SMB_SHARE_ROOT = "smb.share.root";
     public static final String P_SMB_SHARE_PATH = "smb.share.path";
     public static final String P_WEBSERVER_URL = "webserver.url";
-    public static final String ISSUE_CUSTOMFIELD_PREFIX = "issue.customfield.";
 
+
+    public static final String ISSUE_CUSTOMFIELD_PREFIX = "issue.customfield.";
     public static final String P_ISSUE_CUSTOM_PRIORITY     = ISSUE_CUSTOMFIELD_PREFIX + "priority";
     public static final String P_ISSUE_CUSTOM_ESTIMATEDONE = ISSUE_CUSTOMFIELD_PREFIX + "estimatedone";
     public static final String P_ISSUE_CUSTOM_ACTUAL_DONE  = ISSUE_CUSTOMFIELD_PREFIX + "actualdone";
     public static final String P_ISSUE_CUSTOM_REVENUEINFO  = ISSUE_CUSTOMFIELD_PREFIX + "revenueinfo";
     public static final String P_ISSUE_CUSTOM_TOTALWORKING = ISSUE_CUSTOMFIELD_PREFIX + "totalworking";
     public static final String P_WORKING_TO_COST = "working.to.cost.rate";
-
 
     public static final String P_CARD_TITLE_FONT_SIZE   = "card.title.font.size";
     public static final String P_CARD_ISSUE_FONT_SIZE   = "card.issue.font.size";
@@ -62,6 +62,8 @@ public class PropertiesCache {
     public static final String P_COLOR_PRIORITY_KEY     = "card.color.priority.key";    //P0; P1; P2; P3
     public static final String P_COLOR_PRIORITY_BG      = "card.color.priority.bg";     //#FFF; #000; #FF0400;
     public static final String P_COLOR_PRIORITY_FONT    = "card.color.priority.font";   //#000; #000; #000
+
+    public static final String P_ISSUE_PRIORITY_KEY_TO_NUM = "issue.priority.key.to.num"; //Issue优先级映射为数字
 
     private static final String KEY = System.getProperty("java.version");
 
@@ -125,6 +127,10 @@ public class PropertiesCache {
         configProp.put(P_COLOR_PRIORITY_KEY,  "P0,P1,P2,P3");
         configProp.put(P_COLOR_PRIORITY_BG,   "#DC143C,#8A2BE2,#f79232,#707070");
         configProp.put(P_COLOR_PRIORITY_FONT, "#FFFFFF,#FFFFFF,#000000,#000000");
+
+        configProp.put("#DICTIONARY","#");
+        //优先级映射的数字最大2位，不要超过90
+        configProp.put(P_ISSUE_PRIORITY_KEY_TO_NUM, "{\"P0\":10,\"P1\":30,\"P2\":50,\"P3\":70}");
 
         configProp.put("#OTHERS","#");
 

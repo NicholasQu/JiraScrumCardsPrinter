@@ -84,22 +84,21 @@ public class JiraIssue extends AbstractJiraEntity {
     }
 
     public int getPriorityNum() {
-        if (priority == null) return 50;
+        if (priority == null) return 99;
 
-        switch(priority.toLowerCase()) {
-            case "highest":
-                return 10;
-            case "high":
-                return 30;
-            case "medium":
-                return 50;
-            case "low":
-                return 70;
-            case "lowest":
-                return 90;
-            default:
-                return 50;
+        String priorityToNumJson = PropertiesCache.getProp(PropertiesCache.P_ISSUE_PRIORITY_KEY_TO_NUM);
+        Map<String, Integer> priorityToNumMap = null;
+        try {
+            priorityToNumMap = JSON.parseObject(priorityToNumJson, Map.class);
+        } catch (Exception ignore) {
+            priorityToNumMap.put("highest", 10);
+            priorityToNumMap.put("high", 30);
+            priorityToNumMap.put("medium", 50);
+            priorityToNumMap.put("low", 70);
+            priorityToNumMap.put("lowest", 90);
         }
+
+        return priorityToNumMap.get(priority) == null ? 50 : priorityToNumMap.get(priority);
     }
 
     //倒排序 填充固定长度的优先级数字,JIRA内的priority输入的数值最多只允许3位
