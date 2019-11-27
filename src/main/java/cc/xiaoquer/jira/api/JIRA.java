@@ -4,7 +4,7 @@ import cc.xiaoquer.jira.api.beans.*;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONException;
-import org.apache.commons.collections4.CollectionUtils;
+import com.alibaba.fastjson.JSONObject;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.asynchttpclient.*;
@@ -36,13 +36,14 @@ public class JIRA {
 
     public static final String AGILE_ISSUES_URL  = "/rest/agile/1.0/board/{boardId}/sprint/{sprintId}/issue?startAt={start}&maxResults={max}";
     public static final String GREENHOPPER_ISSUES_URL  = "/rest/greenhopper/1.0/xboard/work/allData.json?rapidViewId={boardId}&activeSprints={sprintId}";
+    public static final String GREENHOPPER_BACKLOG_URL  = "/rest/greenhopper/1.0/xboard/plan/backlog/data.json?rapidViewId={boardId}";
     public static final String AGILE_ISSUE_URL   = "/rest/agile/1.0/issue/{issueId}";
     public static final String BROWSE_ISSUE_URL   = "/browse/{issueKey}";
     public static final String BROWSE_BOARD_URL = "/secure/RapidBoard.jspa?projectKey={projectKey}&view=planning.nodetail";
     public static final String BROWSE_SPRINT_URL = "/secure/RapidBoard.jspa?projectKey={projectKey}&view=planning";
 
     //http://jira.xiaoquer.cc/rest/greenhopper/1.0/xboard/plan/backlog/data.json?rapidViewId=232&selectedProjectKey=CPC
-    public static final String GREENHOPPER_BACKLOG_URL = "";
+//    public static final String GREENHOPPER_BACKLOG_URL = "";
 
     //https://confluence.atlassian.com/jiracoreserver073/advanced-searching-861257209.html#Advancedsearching-reference
     //https://developer.atlassian.com/static/rest/jira/6.1.html#d2e4071
@@ -270,6 +271,56 @@ public class JIRA {
         parseSubTasks(boardId, sprintId);
 
         return getStoryOrTaskMap(boardId, sprintId);
+    }
+
+    //Sort backlog with the same order as jira ui shows.
+    public static Map<String, JiraIssue> getBacklogIdByJiraUIOrder(String boardId) {
+        List<String> backlogList = new ArrayList<>();
+
+        String responseBody = getResponse(serverUrl + GREENHOPPER_BACKLOG_URL
+                .replace("{boardId}", boardId));
+
+        JSONObject responseJO = JSON.parseObject(responseBody);
+        JSONArray sprintArray = (responseJO != null? responseJO.getJSONArray("sprints") : null);
+
+        //将已进入sprint的backlog剔除
+        List<String> intoSprintBacklogList = new ArrayList<>();
+        if (sprintArray != null && sprintArray.size() > 0) {
+            for (int i = 0; i < sprintArray.size(); i++) {
+                JSONArray issuesIds = sprintArray.getJSONObject(i).getJSONArray("issuesIds");
+                intoSprintBacklogList.addAll(issuesIds.toJavaList(String.class));
+            }
+        }
+
+        JSONArray issueArray = (responseJO != null? responseJO.getJSONArray("issues") : null);
+
+        if (issueArray != null && issueArray.size() > 0) {
+            for (int i = 0; i < issueArray.size(); i++) {
+                JSONObject issueJO = issueArray.getJSONObject(i);
+//                backlogList.add(JiraIssue._parse(issueJO, boardId, ""));
+
+                String issueId = issueJO.getString("id");
+                if (intoSprintBacklogList.contains(issueId)) continue;
+
+                backlogList.add(issueId);
+            }
+        }
+
+        Map<String, JiraIssue> result = getBacklog(boardId);
+        Map<String, JiraIssue> sortedResult = new LinkedHashMap<>();
+
+        if (result != null && result.size() > 0 && result.size() == backlogList.size()) {
+            for(String backlogId : backlogList) {
+                JiraIssue backlog = result.get(backlogId);
+                if (backlog == null) backlog = getIssueObjById(backlogId, boardId, "");
+                sortedResult.put(backlogId, backlog);
+            }
+        }
+
+        result.clear();
+        result.putAll(sortedResult);
+
+        return result;
     }
 
     //Key=Response String

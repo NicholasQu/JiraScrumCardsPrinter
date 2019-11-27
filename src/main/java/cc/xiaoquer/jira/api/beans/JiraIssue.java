@@ -962,17 +962,18 @@ public class JiraIssue extends AbstractJiraEntity {
 
         jiraIssue.setIssueId(inputJo.getString("id"));
         jiraIssue.setIssueKey(inputJo.getString("key"));
+        jiraIssue.setBoardId(boardId);
+        jiraIssue.setSprintId(sprintId);
 
         JSONObject fieldJo = inputJo.getJSONObject("fields");
+        if (fieldJo == null) return jiraIssue;
+
         jiraIssue.setIssueType(fieldJo.getJSONObject("issuetype").getString("name"));
         jiraIssue.setIssueName(fieldJo.getString("summary"));
         jiraIssue.setIssueStatus(fieldJo.getJSONObject("status").getString("name"));
         jiraIssue.setStatusCategoryKey(fieldJo.getJSONObject("status").getJSONObject("statusCategory").getString("key"));
 
-        jiraIssue.setBoardId(boardId);
-
         //设置Sprint对象
-        jiraIssue.setSprintId(sprintId);
         JSONObject sprintJo = fieldJo.getJSONObject("sprint");
         if (sprintJo == null) {
             //只有spring active的时候才能取到sprint属性，否则是closeSprints数组

@@ -127,7 +127,7 @@ public class ExcelProcessor4Sprint {
             createSprintSheet(workbook, boardName, sprintName, issuesInSprintMap);
         }
 
-        Map<String, JiraIssue> backlogMap = JIRA.getBacklog(boardId);
+        Map<String, JiraIssue> backlogMap = JIRA.getBacklogIdByJiraUIOrder(boardId);
         createBacklogSheet(workbook, boardName, backlogMap);
         File saveFile = new File(EXCEL_FILE.replace("{boardName}", boardName)
                 .replace("{sprintName}", sprintName)
@@ -281,12 +281,12 @@ public class ExcelProcessor4Sprint {
         _clearData();
 
         //将TeamId， 保持issue原序号 拼装为等长字符，实现分组和父子排序
-        Map<String, JiraIssue> excelBacklog = new TreeMap<String, JiraIssue>();
-
-        for (JiraIssue issue : backlogMap.values()) {
-            // 优先级高的靠前，进行中的靠前
-            excelBacklog.put(issue.getSortedKey(), issue);
-        }
+//        Map<String, JiraIssue> excelBacklog = new TreeMap<String, JiraIssue>();
+//
+//        for (JiraIssue issue : backlogMap.values()) {
+//            // 优先级高的靠前，进行中的靠前
+//            excelBacklog.put(issue.getSortedKey(), issue);
+//        }
 
         int rowIdx = 0;
         //2 在workbook中创建一个sheet对应excel中的sheet
@@ -320,7 +320,7 @@ public class ExcelProcessor4Sprint {
         HSSFRow dataRow = null;
         ROW_IDX_DATA = rowIdx;
         TEAM_GROUP_START_ROW.add(rowIdx);
-        for (Map.Entry<String, JiraIssue> entry : excelBacklog.entrySet()) {
+        for (Map.Entry<String, JiraIssue> entry : backlogMap.entrySet()) {
             //每个故事/任务就是一个分组的开始行
             STORY_GROUP_START_ROW.add(rowIdx);
 
