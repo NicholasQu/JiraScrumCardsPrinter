@@ -6,6 +6,7 @@ import cc.xiaoquer.jira.api.beans.JiraIssue;
 import cc.xiaoquer.jira.api.beans.JiraSprint;
 import cc.xiaoquer.jira.constant.FoldersConsts;
 import cc.xiaoquer.jira.storage.PropertiesCache;
+import cc.xiaoquer.utils.JSONParsingUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.common.usermodel.HyperlinkType;
 import org.apache.poi.hssf.usermodel.*;
@@ -448,8 +449,10 @@ public class ExcelProcessor4Sprint {
         row.createCell(columnIdx++).setCellValue(issue.getUpdatedAt());
         row.createCell(columnIdx++).setCellValue(issue.getDueDate());
 
+        Map<String, String> customFieldMap = issue.getCustomFields();
         for (int i = 0; i < COL_ADD_NUM; i++) {
-            String customValue = issue.getCustomFields().get(CUSTOM_KEY_ARR[i]);
+            //支持正则表达式的展示 fields>customfield_12101>.*>value
+            String customValue = JSONParsingUtil.getValueByExp(customFieldMap,CUSTOM_KEY_ARR[i]);
             row.createCell(columnIdx++).setCellValue(customValue);
 
             double addedValue = toDouble(customValue);
